@@ -16,7 +16,7 @@ export function SearchLoading({ query, className }: SearchLoadingProps) {
       {query && (
         <div className="text-center">
           <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Searching for: "{query}"
+            Searching for: &ldquo;{query}&rdquo;
           </h2>
         </div>
       )}

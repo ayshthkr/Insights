@@ -1,151 +1,122 @@
-"use client";
+"use client"
 
-import React, { useState } from 'react';
-import { SearchInput } from '@/components/ui/search-input';
-import { SearchResults } from '@/components/ui/search-results';
-import { SearchLoading } from '@/components/ui/search-loading';
-import { SearchError } from '@/components/ui/search-error';
+import { useState } from "react"
+import { SearchInterface } from "@/components/search-interface"
+import { SearchResults } from "@/components/search-results"
+import { SearchProgress } from "@/components/search-progress"
+import { WelcomeSection } from "@/components/welcome-section"
+import { Header } from "@/components/header"
 
 interface SearchResult {
-  title: string;
-  url: string;
-  snippet: string;
+  title: string
+  url: string
+  snippet: string
 }
 
 interface SearchResponse {
-  query: string;
-  answer: string;
-  sources: SearchResult[];
-  timestamp: string;
+  query: string
+  answer: string
+  sources: SearchResult[]
+  timestamp: string
 }
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false)
+  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [currentQuery, setCurrentQuery] = useState<string>("")
+  const [searchStage, setSearchStage] = useState<string>("")
 
   const handleSearch = async (query: string) => {
-    setIsLoading(true);
-    setError(null);
-    setCurrentQuery(query);
-    setSearchResult(null);
+    setIsLoading(true)
+    setError(null)
+    setCurrentQuery(query)
+    setSearchResult(null)
 
     try {
-      const response = await fetch('/api/search', {
-        method: 'POST',
+      // Simulate search stages
+      setSearchStage("Searching the web...")
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      setSearchStage("Analyzing sources...")
+      await new Promise((resolve) => setTimeout(resolve, 800))
+
+      setSearchStage("Generating answer...")
+
+      const response = await fetch("/api/search", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ query }),
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Search failed');
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Search failed")
       }
 
-      const data: SearchResponse = await response.json();
-      setSearchResult(data);
+      const data: SearchResponse = await response.json()
+      setSearchResult(data)
+      setSearchStage("Complete")
     } catch (err) {
-      console.error('Search error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      console.error("Search error:", err)
+      setError(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
+      setSearchStage("")
     }
-  };
+  }
 
   const handleRetry = () => {
     if (currentQuery) {
-      handleSearch(currentQuery);
+      handleSearch(currentQuery)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Perplexity Clone
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Ask anything and get comprehensive answers powered by AI and real-time web search
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <Header />
+
+        <div className="mt-8 mb-12">
+          <SearchInterface onSearch={handleSearch} isLoading={isLoading} hasResults={!!searchResult} />
         </div>
 
-        {/* Search Input */}
-        <div className="max-w-3xl mx-auto mb-8">
-          <SearchInput
-            onSearch={handleSearch}
-            isLoading={isLoading}
-            placeholder="Ask anything..."
-          />
-        </div>
-
-        {/* Search State Display */}
-        <div className="max-w-5xl mx-auto">
-          {isLoading && (
-            <SearchLoading query={currentQuery} />
-          )}
+        <div className="space-y-8">
+          {isLoading && <SearchProgress query={currentQuery} stage={searchStage} />}
 
           {error && (
-            <SearchError error={error} onRetry={handleRetry} />
-          )}
-
-          {searchResult && !isLoading && !error && (
-            <SearchResults result={searchResult} />
-          )}
-
-          {/* Welcome message when no search has been made */}
-          {!isLoading && !error && !searchResult && (
-            <div className="text-center py-16">
-              <div className="max-w-2xl mx-auto">
-                <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                  Welcome to your AI-powered search assistant
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-8">
-                  Get instant, comprehensive answers to your questions backed by real-time web research and AI analysis.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                      💡 Try asking about current events
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      "What are the latest developments in AI technology?"
-                    </p>
+            <div className="animate-fade-in-up">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-6 h-6 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-red-600 dark:text-red-400 text-sm">!</span>
                   </div>
-                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                      🔍 Research complex topics
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      "Explain quantum computing and its practical applications"
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                      📈 Get market insights
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      "What are the current trends in cryptocurrency markets?"
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                      🛠️ Learn new skills
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      "How do I get started with machine learning?"
-                    </p>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-red-900 dark:text-red-100 mb-2">Search Error</h3>
+                    <p className="text-red-700 dark:text-red-200 mb-4">{error}</p>
+                    <button
+                      onClick={handleRetry}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors font-medium"
+                    >
+                      Try Again
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
+
+          {searchResult && !isLoading && !error && (
+            <div className="animate-fade-in-up">
+              <SearchResults result={searchResult} />
+            </div>
+          )}
+
+          {!isLoading && !error && !searchResult && <WelcomeSection />}
         </div>
       </div>
     </div>
-  );
+  )
 }
