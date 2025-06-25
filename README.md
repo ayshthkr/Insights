@@ -6,20 +6,31 @@ A modern AI-powered search engine built with Next.js 15, React 19, and TypeScrip
 
 - 🔍 **AI-Powered Search**: Utilizes Google Gemini Flash 2.5 for intelligent response generation
 - 🌐 **Real-time Web Search**: Integrates with Exa API for semantic web search
-- 📱 **Responsive Design**: Modern, mobile-first UI built with Tailwind CSS
+- 📱 **Responsive Design**: Modern, mobile-first UI built with Tailwind CSS and shadcn/ui
 - ⚡ **Fast Performance**: Built on Next.js 15 with React 19 and Turbopack
-- 🎯 **Smart Citations**: Clickable source references with smooth navigation
+- 🎯 **Enhanced Citation Tooltips**: Wider, more compact tooltips with favicon display and quick "Visit" action
 - 🌙 **Dark Mode**: Automatic dark/light theme support
-- 📊 **Source Display**: Comprehensive source information with snippets
+- 📊 **Compact Source Cards**: Streamlined, clickable source cards with improved hover effects
+- 🔄 **Smart Loading States**: Shows active query in disabled input during answer generation
+- ⬇️ **Multi-format Downloads**: Download responses as properly formatted PDF, Word, Markdown, or Text files
+- 🎨 **Smooth Animations**: Beautiful transitions and micro-interactions throughout the interface
+- 📍 **Persistent Query Display**: Input box shows current query during loading with animated shimmer effect
+- 📜 **Auto-scroll**: Automatic scrolling during response generation for optimal reading experience
+- 🗣️ **Improved Navigation**: New Chat button with proper styling and instant page refresh
+- 💬 **Interactive Source Cards**: Click-to-open source cards with enhanced visual feedback
+- ✨ **Sparkle Icon**: Clean answer presentation with elegant Sparkle icon (no "Answer" label)
+- 🖼️ **Favicon Integration**: Source tooltips automatically load and display website favicons
 
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS, shadcn/ui components
 - **AI Services**: Google Gemini Flash 2.5
 - **Search API**: Exa AI
 - **Icons**: Lucide React
 - **Package Manager**: Bun
+- **Real-time Features**: Streaming responses, animated UI components
+- **Download Functionality**: Multi-format export capabilities
 
 ## Prerequisites
 
@@ -70,9 +81,12 @@ Before running this application, you'll need to obtain API keys for:
 ## Usage
 
 1. **Basic Search**: Type any question in the search box and press Enter
-2. **View Results**: Get AI-generated answers with source citations
-3. **Source Navigation**: Click on citation numbers to jump to source information
-4. **External Links**: Click the external link icon to visit original sources
+2. **Loading State**: During answer generation, the input shows your query and is disabled with a shimmer effect
+3. **Citation Tooltips**: Hover over citation numbers to see compact source previews with favicons
+4. **Source Navigation**: Click on citation tooltips or source cards to visit external links
+5. **Download Options**: Use the download dropdown to save responses in multiple formats (PDF, Markdown, Word, Text)
+6. **New Chat**: Click the "New Chat" button to start a fresh conversation
+7. **Copy & Share**: Easily copy answers to clipboard or share them
 
 ## Example Queries
 

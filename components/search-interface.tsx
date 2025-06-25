@@ -5,19 +5,37 @@ import { useState, useRef, useEffect } from "react"
 import { Sparkles, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
 
 interface SearchInterfaceProps {
   onSearch: (query: string) => void
   isLoading?: boolean
   hasResults?: boolean
   hasSearched?: boolean
+  currentQuery?: string // Add this to show the current query during loading
+  onQueryComplete?: () => void // Add this to clear the query when complete
 }
 
-export function SearchInterface({ onSearch, isLoading = false, hasResults = false, hasSearched = false }: SearchInterfaceProps) {
+export function SearchInterface({
+  onSearch,
+  isLoading = false,
+  hasResults = false,
+  hasSearched = false,
+  currentQuery = "",
+  onQueryComplete
+}: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Show current query during loading, otherwise show the input query
+  const displayQuery = isLoading && currentQuery ? currentQuery : query
+
+  // Clear query when search is complete
+  useEffect(() => {
+    if (!isLoading && hasResults && onQueryComplete) {
+      setQuery("")
+    }
+  }, [isLoading, hasResults, onQueryComplete])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,17 +51,16 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
     }
   }
 
-  const adjustTextareaHeight = () => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = "auto"
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
-    }
+  const adjustTextareaHeight = () => {      const textarea = textareaRef.current
+      if (textarea) {
+        textarea.style.height = "auto"
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 90)}px` // Reduced max height slightly
+      }
   }
 
   useEffect(() => {
     adjustTextareaHeight()
-  }, [query])
+  }, [displayQuery])
 
   const suggestedQueries = [
     "What are the latest developments in AI?",
@@ -53,7 +70,7 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
   ]
 
   return (
-    <div className={cn("w-full max-w-4xl mx-auto transition-all duration-500", hasResults ? "max-w-2xl" : "max-w-4xl")}>
+    <div className={cn("w-full max-w-5xl mx-auto transition-all duration-500", hasResults ? "max-w-3xl" : "max-w-5xl")}>
       <form onSubmit={handleSubmit} className="relative">
         <div
           className={cn(
@@ -61,10 +78,19 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
             isFocused
               ? "border-emerald-500 shadow-lg shadow-emerald-500/10 dark:shadow-emerald-500/5"
               : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
-            isLoading && "animate-pulse-glow",
+            isLoading && "border-emerald-500 shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10",
           )}
+          style={isLoading ? {
+            background: `linear-gradient(90deg,
+              rgba(16, 185, 129, 0.1) 0%,
+              rgba(5, 150, 105, 0.2) 50%,
+              rgba(16, 185, 129, 0.1) 100%
+            )`,
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 2s infinite'
+          } : {}}
         >
-          <div className="flex items-center gap-3 p-4">
+          <div className="flex items-center gap-3 p-4 relative z-10"> {/* Increased padding back */}
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />
@@ -73,18 +99,18 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
 
             <textarea
               ref={textareaRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={displayQuery}
+              onChange={(e) => !isLoading && setQuery(e.target.value)} // Disable input during loading
               onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Ask anything..."
+              placeholder={isLoading ? "" : "Ask anything..."}
               disabled={isLoading}
               className={cn(
-                "flex-1 resize-none bg-transparent text-lg placeholder:text-slate-500 dark:placeholder:text-slate-400",
-                "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
-                "min-h-[32px] max-h-[120px] leading-8",
-                "flex items-center py-2"
+                "flex-1 resize-none bg-transparent text-base placeholder:text-slate-500 dark:placeholder:text-slate-400", // Reduced font size
+                "focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed",
+                "min-h-[32px] max-h-[100px] leading-7", // Increased width through container changes
+                "flex items-center py-2" // Slightly reduced height
               )}
               rows={1}
               style={{
@@ -114,6 +140,7 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
         </div>
       </form>
 
+      {/* Only show suggestions on initial state */}
       {!hasResults && !isLoading && !hasSearched && (
         <div className="mt-6 animate-fade-in-up">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">Try asking about:</p>

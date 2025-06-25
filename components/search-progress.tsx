@@ -5,6 +5,7 @@ import { Search, Brain, CheckCircle, Globe, ExternalLink } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
+import { StreamingMarkdown } from "@/components/ui/streaming-markdown"
 
 interface SearchResult {
   title: string
@@ -203,17 +204,23 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                   >
-                    <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-medium flex items-center justify-center flex-shrink-0">
+                    <div className="w-5 h-5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-medium flex items-center justify-center flex-shrink-0">
                       {index + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      <p className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                         {source.title}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        {new URL(source.url).hostname}
+                        {(() => {
+                          try {
+                            return new URL(source.url).hostname
+                          } catch {
+                            return source.url
+                          }
+                        })()}
                       </p>
                     </div>
                     <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors flex-shrink-0" />
@@ -245,7 +252,10 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
               </h3>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                 <div className="prose prose-slate dark:prose-invert max-w-none text-sm">
-                  {streamingAnswer}
+                  <StreamingMarkdown
+                    content={streamingAnswer}
+                    className="text-slate-700 dark:text-slate-300 leading-relaxed"
+                  />
                   <motion.span
                     className="inline-block w-2 h-5 bg-emerald-500 ml-1"
                     animate={{ opacity: [1, 0] }}

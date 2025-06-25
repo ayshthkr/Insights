@@ -14,7 +14,11 @@ export const metadata: Metadata = {
   description: "Ask anything and get comprehensive answers powered by AI and real-time web search",
   keywords: ["AI", "search", "perplexity", "artificial intelligence", "web search"],
   authors: [{ name: "Perplexity Clone" }],
-  viewport: "width=device-width, initial-scale=1",
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({

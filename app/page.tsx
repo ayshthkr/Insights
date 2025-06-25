@@ -7,6 +7,7 @@ import { SearchResults } from "@/components/search-results"
 import { SearchProgress } from "@/components/search-progress"
 import { WelcomeSection } from "@/components/welcome-section"
 import { Header } from "@/components/header"
+import { cn } from "@/lib/utils"
 
 interface SearchResult {
   title: string
@@ -121,6 +122,10 @@ export default function Home() {
                   break
                 case 'answer_chunk':
                   setStreamingAnswer(data.fullAnswer)
+                  // Auto-scroll to bottom during streaming
+                  setTimeout(() => {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+                  }, 100)
                   break
                 case 'answer':
                   setSearchResult({
@@ -135,11 +140,12 @@ export default function Home() {
                 case 'complete':
                   setIsLoading(false)
                   setStreamingState(null)
+                  setCurrentQuery("") // Clear the query when complete
                   break
                 case 'error':
                   throw new Error(data.message)
               }
-            } catch (e) {
+            } catch {
               // Skip invalid JSON
             }
           }
@@ -162,31 +168,39 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
-      <div className="container mx-auto px-4 py-6">
+      <div className={cn("container mx-auto px-4 py-6", hasSearched && "pb-32")}>
         <Header />
 
         <main className="flex flex-col items-center justify-center space-y-8">
-          {/* Main Search Interface - Always visible */}
-          <motion.div
-            className={`w-full max-w-3xl ${hasSearched ? 'mt-4' : 'mt-20'}`}
-            layout
-            transition={{ duration: 0.6, ease: "easeInOut" }}
-          >
-            <AnimatePresence mode="wait">
-              {!hasSearched && (
+          {/* Main Search Interface - Shows only when no search is active */}
+          <AnimatePresence mode="wait">
+            {!hasSearched && (
+              // Initial centered search interface
+              <motion.div
+                key="initial-search"
+                className="w-full max-w-3xl mt-20"
+                initial={{ opacity: 1, y: 0 }}
+                exit={{
+                  opacity: 0,
+                  y: typeof window !== 'undefined' ? window.innerHeight : 1000,
+                  transition: { duration: 0.8, ease: "easeInOut" }
+                }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+              >
                 <motion.div
-                  initial={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4 }}
                   className="text-center mb-12"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -50 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
                 >
                   <motion.h1
-                    className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 bg-clip-text text-transparent"
+                    className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 bg-clip-text text-transparent"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
                   >
-                    What would you like to know?
+                    Ask anything
                   </motion.h1>
                   <motion.p
                     className="text-xl text-slate-600 dark:text-slate-400 mb-8"
@@ -194,20 +208,38 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
-                    Ask me anything and get comprehensive, AI-powered answers with real-time sources
+                    Get instant, comprehensive answers
                   </motion.p>
                 </motion.div>
-              )}
-            </AnimatePresence>
 
-            <motion.div
-              layout
-              transition={{ duration: 0.6, ease: "easeInOut" }}
-              className="flex items-center justify-center"
-            >
-              <SearchInterface onSearch={handleSearch} isLoading={isLoading} />
-            </motion.div>
-          </motion.div>
+                <SearchInterface
+                  onSearch={handleSearch}
+                  isLoading={isLoading}
+                  hasSearched={hasSearched}
+                  currentQuery={currentQuery}
+                  onQueryComplete={() => setCurrentQuery("")}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Current Query Display */}
+          <AnimatePresence>
+            {hasSearched && currentQuery && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="w-full max-w-4xl"
+              >
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 mb-6">
+                  <p className="text-slate-700 dark:text-slate-300 text-lg">
+                    &ldquo;{currentQuery}&rdquo;
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Progress/Loading State */}
           <AnimatePresence>
@@ -286,6 +318,28 @@ export default function Home() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Fixed bottom search bar - appears with smooth animation after search */}
+      <AnimatePresence>
+        {hasSearched && (
+          <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              duration: 0.8
+            }}
+            className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 p-4 z-50 shadow-2xl"
+          >
+            <div className="container mx-auto max-w-4xl">
+              <SearchInterface onSearch={handleSearch} isLoading={isLoading} hasSearched={hasSearched} hasResults={!!searchResult} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -15,13 +15,6 @@ interface SearchResult {
   content?: string
 }
 
-interface SearchResponse {
-  query: string
-  answer: string
-  sources: SearchResult[]
-  timestamp: string
-}
-
 async function extractContent(url: string): Promise<string> {
   try {
     const response = await axios.get(url, {
@@ -54,21 +47,29 @@ async function extractContent(url: string): Promise<string> {
     for (const selector of contentSelectors) {
       const element = $(selector)
       if (element.length > 0) {
-        content = element.text().trim()
-        break
+        const textContent = element.text()
+        if (textContent && typeof textContent === 'string') {
+          content = textContent.trim()
+          break
+        }
       }
     }
 
     // Fallback to body content if no specific content area found
     if (!content) {
-      content = $("body").text().trim()
+      const bodyContent = $("body").text()
+      if (bodyContent && typeof bodyContent === 'string') {
+        content = bodyContent.trim()
+      }
     }
 
     // Clean up the content
-    content = content
-      .replace(/\s+/g, " ")
-      .replace(/\n\s*\n/g, "\n")
-      .trim()
+    if (content && typeof content === 'string') {
+      content = content
+        .replace(/\s+/g, " ")
+        .replace(/\n\s*\n/g, "\n")
+        .trim()
+    }
 
     // Limit content length
     return content.substring(0, 5000)
@@ -89,11 +90,17 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
     const results: SearchResult[] = []
 
     for (const result of searchResults.results) {
+      // Validate that we have the required fields
+      if (!result.url || typeof result.url !== 'string') {
+        console.warn('Skipping result with invalid URL:', result)
+        continue
+      }
+
       const searchResult: SearchResult = {
-        title: result.title || "Untitled",
+        title: (result.title && typeof result.title === 'string') ? result.title : "Untitled",
         url: result.url,
-        snippet: result.text?.substring(0, 200) + "..." || "",
-        content: result.text || "",
+        snippet: (result.text && typeof result.text === 'string') ? result.text.substring(0, 200) + "..." : "No snippet available",
+        content: (result.text && typeof result.text === 'string') ? result.text : "",
       }
 
       // If we don't have content, try to extract it
