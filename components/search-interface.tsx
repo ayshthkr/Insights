@@ -5,14 +5,16 @@ import { useState, useRef, useEffect } from "react"
 import { Sparkles, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface SearchInterfaceProps {
   onSearch: (query: string) => void
   isLoading?: boolean
   hasResults?: boolean
+  hasSearched?: boolean
 }
 
-export function SearchInterface({ onSearch, isLoading = false, hasResults = false }: SearchInterfaceProps) {
+export function SearchInterface({ onSearch, isLoading = false, hasResults = false, hasSearched = false }: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -62,8 +64,8 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
             isLoading && "animate-pulse-glow",
           )}
         >
-          <div className="flex items-start gap-3 p-4">
-            <div className="flex-shrink-0 mt-1">
+          <div className="flex items-center gap-3 p-4">
+            <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
@@ -81,9 +83,15 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
               className={cn(
                 "flex-1 resize-none bg-transparent text-lg placeholder:text-slate-500 dark:placeholder:text-slate-400",
                 "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
-                "min-h-[28px] max-h-[120px] leading-7",
+                "min-h-[32px] max-h-[120px] leading-8",
+                "flex items-center py-2"
               )}
               rows={1}
+              style={{
+                lineHeight: '1.5',
+                paddingTop: '8px',
+                paddingBottom: '8px'
+              }}
             />
 
             <Button
@@ -106,7 +114,7 @@ export function SearchInterface({ onSearch, isLoading = false, hasResults = fals
         </div>
       </form>
 
-      {!hasResults && !isLoading && (
+      {!hasResults && !isLoading && !hasSearched && (
         <div className="mt-6 animate-fade-in-up">
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">Try asking about:</p>
           <div className="flex flex-wrap gap-2 justify-center">

@@ -14,7 +14,7 @@ export function Header() {
         </div>
         <div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-            Perplexity
+            Insights
           </h1>
           <p className="text-sm text-muted-foreground">AI-Powered Search</p>
         </div>

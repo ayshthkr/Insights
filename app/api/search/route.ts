@@ -111,7 +111,7 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
   }
 }
 
-async function generateAnswer(query: string, sources: SearchResult[]): Promise<string> {
+async function* generateAnswer(query: string, sources: SearchResult[]): AsyncGenerator<string, void, unknown> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
@@ -142,15 +142,27 @@ Instructions:
 5. Keep the answer informative but concise
 6. Use a natural, conversational tone
 7. Include citations in the format [1], [2], etc. referencing the source numbers
+8. Format your response using Markdown syntax for better readability:
+   - Use **bold** for emphasis
+   - Use *italics* for lesser emphasis
+   - Use bullet points and numbered lists where appropriate
+   - Use headers (##, ###) to structure longer responses
+   - Use code blocks \`\`\` for any code examples
+   - Use blockquotes > for quotes from sources
 
-Please provide a well-structured answer:`
+Please provide a well-structured markdown-formatted answer:`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    return response.text()
+    const result = await model.generateContentStream(prompt)
+
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text()
+      if (chunkText) {
+        yield chunkText
+      }
+    }
   } catch (error) {
     console.error("Error generating answer:", error)
-    return "I apologize, but I encountered an error while generating an answer. Please try again."
+    yield "I apologize, but I encountered an error while generating an answer. Please try again."
   }
 }
 
@@ -170,34 +182,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Search the web
-    const sources = await searchWeb(query)
+    // Create a ReadableStream for streaming response
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder()
 
-    if (sources.length === 0) {
-      return NextResponse.json({
-        query,
-        answer:
-          "I apologize, but I could not find any relevant information for your query. Please try rephrasing your question.",
-        sources: [],
-        timestamp: new Date().toISOString(),
-      } as SearchResponse)
-    }
+        try {
+          // Send initial status
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Searching the web...', stage: 'searching' })}\n\n`))
 
-    // Generate answer using AI
-    const answer = await generateAnswer(query, sources)
+          // Search the web
+          const sources = await searchWeb(query)
 
-    const response: SearchResponse = {
-      query,
-      answer,
-      sources: sources.map((source) => ({
-        title: source.title,
-        url: source.url,
-        snippet: source.snippet,
-      })),
-      timestamp: new Date().toISOString(),
-    }
+          if (sources.length === 0) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found' })}\n\n`))
+            controller.close()
+            return
+          }
 
-    return NextResponse.json(response)
+          // Send sources found
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'sources',
+            sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
+            message: 'Analyzing sources...',
+            stage: 'analyzing'
+          })}\n\n`))
+
+          // Generate answer with streaming
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Generating answer...', stage: 'generating' })}\n\n`))
+
+          let fullAnswer = ""
+          for await (const chunk of generateAnswer(query, sources)) {
+            fullAnswer += chunk
+            // Send streaming answer chunks
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'answer_chunk',
+              chunk: chunk,
+              fullAnswer: fullAnswer
+            })}\n\n`))
+          }
+
+          // Send the complete answer
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'answer',
+            answer: fullAnswer,
+            query,
+            sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
+            timestamp: new Date().toISOString()
+          })}\n\n`))
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))
+          controller.close()
+        } catch (error) {
+          console.error('Streaming error:', error)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'An error occurred while processing your request' })}\n\n`))
+          controller.close()
+        }
+      }
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    })
   } catch (error) {
     console.error("Search API error:", error)
     return NextResponse.json({ error: "Internal server error. Please try again later." }, { status: 500 })
