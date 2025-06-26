@@ -1,17 +1,46 @@
 # Perplexity Clone
 
-A modern AI-p## Features
+A modern AI-powered search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
+
+## Features
 
 - 🔐 **Secure Authentication**: Clerk-powered authentication with sign-in/sign-up modals and custom-styled components
-- 👤 **User-Gated Access**: Search functionality restricted to authenticated users with elegant authentication prompts via dialog modalsed search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
+- 👤 **User-Gated Access**: Search functionality restricted to authenticated users with elegant authentication prompts via dialog modals
 
 ## Recent Improvements
+
+### Chat System & Conversational Context
+- 💬 **Contextual Conversations**: AI now uses previous messages in the same chat as context for follow-up questions, enabling natural conversation flow
+- 🧠 **Smart Context Integration**: Previous conversation history is automatically included when classifying queries and generating responses
+- 📈 **Conversation Continuity**: Each new query considers what has been discussed before, allowing for multi-turn conversations
+- 🔄 **Context-Aware Search**: Query classification takes into account conversation history to determine if web search is needed
+- 💭 **Memory Persistence**: Full conversation history maintained across chat sessions with proper message threading
+
+### Enhanced User Flow & Performance
+- ⚡ **Instant Chat Navigation**: From homepage, users are immediately redirected to chat page and search starts automatically using sessionStorage for zero-delay transitions
+- 🚀 **Eliminated Wait Times**: No more delays between creating chat and starting search - everything happens seamlessly with improved session handling
+- 🔗 **Optimized Redirect Flow**: Homepage creates chat and redirects immediately, chat page picks up query from sessionStorage instantly and starts search
+- 📱 **Smooth Transitions**: Eliminated loading states that caused user experience delays with improved state management
+- 🔄 **Enhanced Context Retrieval**: Improved conversation context handling with better message ordering and context validation
+
+### Chat System & URL Management
+- 💬 **Automatic Chat Creation**: When users submit a question from the main page, a new chat is automatically created in the database
+- 🔗 **Smart URL Routing**: Users are immediately redirected to `/chat/{chat_id}` where their question is processed and responses are displayed
+- 📱 **Seamless Transitions**: Smooth fade-out transition from main search interface to dedicated chat pages (no vertical movement)
+- 🔄 **Chat Persistence**: All conversations are saved with unique identifiers and can be resumed later
+- 📊 **Message Management**: Full message history with proper role tracking (user/assistant) and metadata storage
+- 💬 **Complete Conversation Threading**: All previous messages displayed in chronological order as conversation threads
+- 📜 **Enhanced Auto-scroll**: Improved automatic scrolling to bottom during response generation with faster updates (300ms intervals)
+- 🎯 **Message History Continuity**: When new questions are asked, all previous chat messages remain visible in the conversation
+- 🔧 **Improved Input Alignment**: Fixed vertical alignment issues in the search input box during answer generation
 
 ### Authentication & User Management
 - 🔐 **Clerk Authentication**: Complete authentication system with clean header design featuring standard SignInButton and custom-styled SignUpButton
 - 👤 **User-Gated Search**: Only authenticated users can perform searches, with elegant modal prompts for unauthenticated users
 - 🎨 **Enhanced Header**: Clean header layout with proper spacing, authentication buttons positioned on the right, and integrated user profile management
 - 📱 **Responsive Auth UI**: Authentication buttons adapt to different screen sizes with proper spacing and hover effects
+- 🔗 **Webhook Integration**: Comprehensive Clerk webhook handling for user lifecycle events (create, update, delete, session management)
+- 📊 **Enhanced Logging**: Automatic logging of authentication events, user actions, and system activities
 
 ### UI/UX Enhancements
 - 🏷️ **Enhanced Citation Tooltips**: Tooltips now automatically position below if there's insufficient space above
@@ -27,12 +56,18 @@ A modern AI-p## Features
 - 💬 **Direct Answer Generation**: Responses start directly addressing the question without "Here's a summary..." prefixes
 - ⚡ **Adaptive Search Strategy**: Automatically refines search terms based on context quality evaluation
 - 🧠 **Enhanced Query Understanding**: Improved classification for determining when web search is needed vs. general knowledge responses
+- 🗣️ **Conversation-Aware AI**: All AI functions now consider previous conversation context for better, more relevant responses
+- 🔍 **Improved Context Handling**: Enhanced chat context retrieval and formatting to ensure conversation continuity and avoid including current query in context
 
-### Technical Improvements
-- ⚡ **Hydration Issue Fixes**: Resolved SSR/client rendering mismatches in markdown components
-- 🎨 **Enhanced Progress Visualization**: Removed unnecessary "complete" step and improved search term presentation
-- 🔧 **Better List Rendering**: Fixed bullet point and content alignment issues in markdown
-- 🎪 **Improved Animations**: Smoother transitions and micro-interactions throughout the interface
+### Database & Chat Management
+- 🗄️ **Comprehensive Database Integration**: Full CRUD operations with Supabase for users, chats, messages, and logs
+- 💬 **Chat Session Management**: Automatic chat creation with unique URLs for each conversation (/chat/{chat_id})
+- 📝 **Message Persistence**: All user queries and AI responses are saved with metadata including search terms and sources
+- 🔍 **Chat History**: Users can resume conversations and view previous search results
+- 📊 **Activity Logging**: Comprehensive logging system tracking user actions, search activities, and system events
+- 🔐 **Row Level Security**: Database access controlled by Clerk authentication with proper user scoping
+- 🔄 **Real-time Chat Creation**: Seamless transition from main search to dedicated chat URLs
+- 📈 **User Analytics**: Detailed logging of user behavior, search patterns, and system performance
 
 ## Features
 
@@ -72,6 +107,7 @@ A modern AI-p## Features
 - **Package Manager**: Bun
 - **Real-time Features**: Streaming responses, animated UI components
 - **Download Functionality**: Multi-format export capabilities
+- **Webhook Handling**: Svix for secure webhook verification
 
 ## Prerequisites
 

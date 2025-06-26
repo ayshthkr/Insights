@@ -108,7 +108,7 @@ export function SearchInterface({
               animation: 'shimmer 2s infinite'
             } : {}}
           >
-            <div className="flex items-center gap-3 p-4 relative z-10"> {/* Increased padding back */}
+            <div className="flex items-center gap-3 p-4 relative z-10">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-white" />
@@ -125,16 +125,13 @@ export function SearchInterface({
                 placeholder={isLoading ? "" : "Ask anything..."}
                 disabled={isLoading}
                 className={cn(
-                  "flex-1 resize-none bg-transparent text-base placeholder:text-slate-500 dark:placeholder:text-slate-400", // Reduced font size
+                  "flex-1 resize-none bg-transparent text-base placeholder:text-slate-500 dark:placeholder:text-slate-400",
                   "focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed",
-                  "min-h-[32px] max-h-[100px] leading-7", // Increased width through container changes
-                  "flex items-center py-2" // Slightly reduced height
+                  "min-h-[32px] max-h-[100px] py-2 leading-relaxed"
                 )}
                 rows={1}
                 style={{
-                  lineHeight: '1.5',
-                  paddingTop: '8px',
-                  paddingBottom: '8px'
+                  lineHeight: '1.5'
                 }}
               />
 
@@ -145,7 +142,7 @@ export function SearchInterface({
                 className={cn(
                   "rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "transition-all duration-200 flex-shrink-0 mt-0.5",
+                  "transition-all duration-200 flex-shrink-0 h-8 w-8 p-0",
                 )}
               >
                 {isLoading ? (

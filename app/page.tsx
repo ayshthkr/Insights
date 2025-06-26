@@ -1,182 +1,54 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SearchInterface } from "@/components/search-interface"
-import { SearchResults } from "@/components/search-results"
-import { SearchProgress } from "@/components/search-progress"
-import { WelcomeSection } from "@/components/welcome-section"
+import { ChatHistory } from "@/components/chat-history"
 import { Header } from "@/components/header"
 import { cn } from "@/lib/utils"
-import { FaviconService } from "@/lib/favicon-service"
-
-interface SearchResult {
-  title: string
-  url: string
-  snippet: string
-}
-
-interface SearchResponse {
-  query: string
-  answer: string
-  sources: SearchResult[]
-  timestamp: string
-  requiresSearch?: boolean
-  searchTerms?: string[]
-}
-
-interface StreamingState {
-  stage: 'searching' | 'analyzing' | 'generating' | 'complete'
-  message: string
-  sources?: SearchResult[]
-  answer?: string
-  searchTerms?: string[]
-  requiresSearch?: boolean
-  searchDetails?: {
-    searchedFor: string
-    foundSources: number
-    exaResults?: string[]
-  }
-}
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
-  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [currentQuery, setCurrentQuery] = useState<string>("")
-  const [streamingState, setStreamingState] = useState<StreamingState | null>(null)
-  const [showScrollContent, setShowScrollContent] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-  const [streamingAnswer, setStreamingAnswer] = useState<string>("")
-
-  // Handle scroll to show additional content
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY
-      const threshold = 100 // Show content after scrolling 100px
-      setShowScrollContent(scrollY > threshold && !hasSearched)
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [hasSearched])
 
   const handleSearch = async (query: string) => {
     setIsLoading(true)
     setError(null)
     setCurrentQuery(query)
-    setSearchResult(null)
-    setStreamingState(null)
-    setStreamingAnswer("")
     setHasSearched(true)
 
     try {
-      const response = await fetch("/api/search", {
+      // First create a new chat
+      const chatResponse = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          title: query.length > 50 ? query.substring(0, 47) + "..." : query
+        }),
       })
 
-      if (!response.ok) {
-        throw new Error('Search failed')
+      if (!chatResponse.ok) {
+        throw new Error('Failed to create chat')
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+      const { chatId } = await chatResponse.json()
 
-      if (!reader) {
-        throw new Error('No response body')
-      }
+      // Store the query in sessionStorage to be picked up immediately by chat page
+      sessionStorage.setItem('pendingQuery', query)
+      sessionStorage.setItem('pendingChatId', chatId)
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      // Redirect to the chat page immediately
+      window.location.href = `/chat/${chatId}`
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6))
-
-              switch (data.type) {
-                case 'status':
-                  setStreamingState({
-                    stage: data.stage,
-                    message: data.message,
-                    searchTerms: data.searchTerms || [],
-                    requiresSearch: data.requiresSearch,
-                    searchDetails: data.stage === 'searching' ? {
-                      searchedFor: query,
-                      foundSources: 0
-                    } : undefined
-                  })
-                  break
-                case 'sources':
-                  const sources = data.sources
-                  setStreamingState({
-                    stage: data.stage,
-                    message: data.message,
-                    sources: sources,
-                    searchTerms: data.searchTerms || [],
-                    searchDetails: {
-                      searchedFor: query,
-                      foundSources: sources.length,
-                      exaResults: sources.map((s: SearchResult) => s.title)
-                    }
-                  })
-                  // Prefetch favicons for all sources
-                  if (sources && sources.length > 0) {
-                    FaviconService.prefetchFavicons(sources.map((s: SearchResult) => s.url))
-                  }
-                  break
-                case 'answer_chunk':
-                  setStreamingAnswer(data.fullAnswer)
-                  // Auto-scroll to bottom during streaming
-                  setTimeout(() => {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
-                  }, 100)
-                  break
-                case 'answer':
-                  const result = {
-                    query: data.query,
-                    answer: data.answer,
-                    sources: data.sources,
-                    timestamp: data.timestamp,
-                    requiresSearch: data.requiresSearch,
-                    searchTerms: data.searchTerms
-                  }
-                  setSearchResult(result)
-                  setStreamingState(null) // Remove complete stage
-                  setStreamingAnswer("")
-                  // Prefetch favicons for result sources too
-                  if (result.sources && result.sources.length > 0) {
-                    FaviconService.prefetchFavicons(result.sources.map((s: SearchResult) => s.url))
-                  }
-                  break
-                case 'complete':
-                  setIsLoading(false)
-                  setStreamingState(null)
-                  setCurrentQuery("") // Clear the query when complete
-                  break
-                case 'error':
-                  throw new Error(data.message)
-              }
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Search error:", err)
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+    } catch (error) {
+      console.error("Search error:", error)
+      setError(error instanceof Error ? error.message : "An error occurred")
       setIsLoading(false)
-      setStreamingState(null)
-      setStreamingAnswer("")
+      setHasSearched(false)
     }
   }
 
@@ -199,11 +71,10 @@ export default function Home() {
               <motion.div
                 key="initial-search"
                 className="w-full max-w-3xl mt-20"
-                initial={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 1 }}
                 exit={{
                   opacity: 0,
-                  y: typeof window !== 'undefined' ? window.innerHeight : 1000,
-                  transition: { duration: 0.8, ease: "easeInOut" }
+                  transition: { duration: 0.5, ease: "easeInOut" }
                 }}
                 transition={{ duration: 0.6, ease: "easeInOut" }}
               >
@@ -211,7 +82,7 @@ export default function Home() {
                   className="text-center mb-12"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -50 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
                 >
                   <motion.h1
@@ -242,41 +113,9 @@ export default function Home() {
             )}
           </AnimatePresence>
 
+          {/* Progress/Loading State - Not needed since we redirect immediately */}
 
-
-          {/* Progress/Loading State */}
-          <AnimatePresence>
-            {streamingState && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-4xl"
-              >
-                <SearchProgress
-                  query={currentQuery}
-                  stage={streamingState.stage}
-                  sources={streamingState.sources || []}
-                  streamingStage={streamingState}
-                  streamingAnswer={streamingAnswer}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Search Results */}
-          <AnimatePresence>
-            {searchResult && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-4xl"
-              >
-                <SearchResults result={searchResult} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Search Results - Not needed since we redirect immediately */}
 
           {/* Error State */}
           <AnimatePresence>
@@ -305,17 +144,19 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          {/* Welcome Section - Only show on scroll and no search */}
+
+
+          {/* Chat History - Show below welcome section when user is signed in */}
           <AnimatePresence>
-            {showScrollContent && (
+            {!hasSearched && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
                 className="w-full max-w-6xl"
               >
-                <WelcomeSection />
+                <ChatHistory className="mt-16" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -342,7 +183,7 @@ export default function Home() {
                 onSearch={handleSearch}
                 isLoading={isLoading}
                 hasSearched={hasSearched}
-                hasResults={!!searchResult}
+                hasResults={false}
                 currentQuery={isLoading ? currentQuery : ""}
               />
             </div>

@@ -3,6 +3,8 @@ import Exa from "exa-js"
 import axios from "axios"
 import * as cheerio from "cheerio"
 import { type NextRequest, NextResponse } from "next/server"
+import { auth } from '@clerk/nextjs/server'
+import { db } from '@/lib/database'
 
 // Initialize AI services
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!)
@@ -85,7 +87,7 @@ async function extractContent(url: string): Promise<string> {
   }
 }
 
-async function classifyQuery(query: string): Promise<QueryClassification> {
+async function classifyQuery(query: string, chatContext?: string): Promise<QueryClassification> {
   try {
     // First, do a quick check for obviously simple queries that don't need web search
     const simplePatterns = [
@@ -111,10 +113,21 @@ async function classifyQuery(query: string): Promise<QueryClassification> {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
+    // Get current date information for temporal context
+    const currentDate = new Date()
+    const currentYear = currentDate.getFullYear()
+    const currentMonth = currentDate.toLocaleString('default', { month: 'long' })
+    const currentDay = currentDate.getDate()
+    const dateContext = `\n\nCURRENT DATE CONTEXT: Today is ${currentMonth} ${currentDay}, ${currentYear}. Use this date information when generating search terms to ensure they are temporally appropriate and current.`
+
+    const contextPrompt = chatContext
+      ? `\n\nPrevious conversation context:\n${chatContext}\n\nCurrent query is in context of this conversation. Consider what has been discussed before when determining if web search is needed.`
+      : ""
+
     const prompt = `
 You are an AI assistant that determines whether a user query requires web search or can be answered with general knowledge.
 
-Analyze this query: "${query}"
+Analyze this query: "${query}"${contextPrompt}${dateContext}
 
 IMPORTANT: Be conservative - prefer NOT requiring web search unless the query clearly needs current/real-time information.
 
@@ -141,8 +154,17 @@ Consider these criteria for NOT requiring web search (use general knowledge):
 - Creative writing, storytelling, or brainstorming
 - Code examples, programming concepts, or technical explanations
 - Academic subjects with established knowledge
+- Follow-up questions that can be answered based on conversation context
+- Current year is 2025
 
 If web search IS required, generate 2-3 specific, focused search terms that would be most effective for finding relevant information.
+
+IMPORTANT FOR SEARCH TERMS:
+- Include temporal context when the query relates to current events, trends, or time-sensitive information
+- For "latest" or "recent" queries, include the current year (${currentYear}) in search terms
+- For current events, add terms like "news", "updates", or the current month/year
+- For trends or developments, include "2024" or "2025" to get current information
+- For data that changes regularly, include "current" or the specific time period
 
 Respond in JSON format:
 {
@@ -152,7 +174,9 @@ Respond in JSON format:
 }
 
 Important: Keep search terms concise and specific. Focus on key concepts rather than full sentences.
-Examples of search terms: "AI trends 2024", "stock market news", "climate change data"
+Examples of good search terms:
+- "AI trends 2025", "stock market news January 2025", "climate change data 2024"
+- "latest iPhone release 2025", "current inflation rates", "recent medical breakthroughs 2024"
 NOT: "what are the latest trends in artificial intelligence technology"`
 
     const result = await model.generateContent(prompt)
@@ -209,6 +233,12 @@ async function evaluateContextQuality(query: string, sources: SearchResult[]): P
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
+    // Get current date information for temporal context
+    const currentDate = new Date()
+    const currentYear = currentDate.getFullYear()
+    const currentMonth = currentDate.toLocaleString('default', { month: 'long' })
+    const dateContext = `\n\nCURRENT DATE CONTEXT: Today is ${currentMonth} ${currentDate.getDate()}, ${currentYear}. When generating new search terms, include appropriate temporal context (current year, recent, latest, etc.) for time-sensitive queries.`
+
     // Combine source content for evaluation
     const combinedContent = sources
       .map(source => `${source.title}: ${source.content || source.snippet}`)
@@ -218,7 +248,7 @@ async function evaluateContextQuality(query: string, sources: SearchResult[]): P
     const prompt = `
 Evaluate whether the provided search results contain sufficient information to answer the user's query.
 
-User Query: "${query}"
+User Query: "${query}"${dateContext}
 
 Search Results:
 ${combinedContent}
@@ -228,11 +258,16 @@ Analyze the search results and determine:
 2. Are there enough details to provide a comprehensive answer?
 3. If insufficient, what alternative search terms would be more effective?
 
+When generating new search terms:
+- Include temporal context for current events, trends, or time-sensitive information
+- For queries about "latest", "recent", or "current" information, include "${currentYear}" in search terms
+- Add contextual terms like "news", "updates", "current data" for better results
+
 Respond in JSON format:
 {
   "isInsufficient": boolean,
   "reasoning": "Brief explanation of the evaluation",
-  "newSearchTerms": ["term1", "term2"] // Only if isInsufficient is true
+  "newSearchTerms": ["term1", "term2"] // Only if isInsufficient is true, include temporal context when relevant
 }
 
 Consider results insufficient if:
@@ -315,7 +350,7 @@ async function searchWeb(searchTerms: string[]): Promise<SearchResult[]> {
   }
 }
 
-async function* generateAnswer(query: string, sources: SearchResult[]): AsyncGenerator<string, void, unknown> {
+async function* generateAnswer(query: string, sources: SearchResult[], chatContext?: string): AsyncGenerator<string, void, unknown> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
@@ -330,10 +365,14 @@ Content: ${source.content || source.snippet}
       )
       .join("\n")
 
+    const contextPrompt = chatContext
+      ? `\n\nPrevious conversation context:\n${chatContext}\n\nConsider this context when answering. Reference previous parts of the conversation if relevant.`
+      : ""
+
     const prompt = `
 You are a helpful AI assistant providing direct, comprehensive answers based on web search results.
 
-User Query: "${query}"
+User Query: "${query}"${contextPrompt}
 
 Available Sources:
 ${combinedContent}
@@ -346,7 +385,8 @@ Instructions:
 5. If sources contradict each other, acknowledge the conflicting information
 6. Maintain a natural, conversational tone while being informative
 7. Include citations in the format [1], [2], etc. referencing the source numbers
-8. Format your response using Markdown syntax for better readability:
+8. If there is previous conversation context, maintain continuity and reference it when relevant
+9. Format your response using Markdown syntax for better readability:
    - Use **bold** for emphasis
    - Use *italics* for lesser emphasis
    - Use bullet points and numbered lists where appropriate
@@ -370,28 +410,33 @@ Provide a well-structured, directly responsive answer that immediately addresses
   }
 }
 
-async function* generateDirectAnswer(query: string): AsyncGenerator<string, void, unknown> {
+async function* generateDirectAnswer(query: string, chatContext?: string): AsyncGenerator<string, void, unknown> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+
+    const contextPrompt = chatContext
+      ? `\n\nPrevious conversation context:\n${chatContext}\n\nConsider this context when answering. Reference previous parts of the conversation if relevant.`
+      : ""
 
     const prompt = `
 You are a helpful AI assistant providing direct, comprehensive answers using your general knowledge.
 
-User Query: "${query}"
+User Query: "${query}"${contextPrompt}
 
 Instructions:
 1. Answer the user's query directly and comprehensively using your general knowledge
 2. Start your response by directly addressing the question - do not begin with phrases like "Here's a summary" or "Based on my knowledge"
 3. Be accurate and informative while maintaining a natural, conversational tone
-4. Format your response using Markdown syntax for better readability:
+4. If there is previous conversation context, maintain continuity and reference it when relevant
+5. Format your response using Markdown syntax for better readability:
    - Use **bold** for emphasis
    - Use *italics* for lesser emphasis
    - Use bullet points and numbered lists where appropriate
    - Use headers (##, ###) to structure longer responses
    - Use code blocks \`\`\` for any code examples
    - Use blockquotes > for quotes when appropriate
-5. If you're uncertain about current information, mention that the information might be outdated
-6. Be helpful and engaging in your response
+6. If you're uncertain about current information, mention that the information might be outdated
+7. Be helpful and engaging in your response
 
 Provide a well-structured, directly responsive answer that immediately addresses the user's question:`
 
@@ -411,19 +456,64 @@ Provide a well-structured, directly responsive answer that immediately addresses
 
 export async function POST(request: NextRequest) {
   try {
-    const { query } = await request.json()
+    const { query, chatId } = await request.json()
 
     if (!query || typeof query !== "string") {
       return NextResponse.json({ error: "Query is required and must be a string" }, { status: 400 })
     }
 
+    // Check authentication
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Ensure user exists in database
+    await db.ensureUserExists(userId)
+
+    // Log search activity
+    await db.logActivity(userId, 'INFO', 'Search initiated', { query, chatId })
+
     // Check if API keys are configured
     if (!process.env.GOOGLE_AI_API_KEY || !process.env.EXA_API_KEY) {
+      await db.logActivity(userId, 'ERROR', 'API keys not configured')
       return NextResponse.json(
         { error: "API keys not configured. Please set GOOGLE_AI_API_KEY and EXA_API_KEY in environment variables." },
         { status: 500 },
       )
     }
+
+    // Determine if we need to create a new chat or use existing
+    let currentChatId = chatId
+    if (!currentChatId) {
+      // Generate a title from the query for new chat
+      const title = await db.generateChatTitle(query)
+      currentChatId = await db.createChat(userId, title)
+    }
+
+    // Get previous messages for context if this is an existing chat
+    let chatContext = ""
+    if (currentChatId) {
+      const previousMessages = await db.getChatMessages(currentChatId)
+      if (previousMessages.length > 0) {
+        // Format previous messages as context (limit to last 10 messages to avoid token limits)
+        // Exclude the current query if it's already in the messages (for retry scenarios)
+        const recentMessages = previousMessages.slice(-10)
+        chatContext = recentMessages
+          .map(msg => `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`)
+          .join('\n\n')
+
+        await db.logActivity(userId, 'INFO', 'Using chat context', {
+          chatId: currentChatId,
+          contextMessages: recentMessages.length,
+          hasContext: chatContext.length > 0,
+          contextPreview: chatContext.substring(0, 100) + (chatContext.length > 100 ? '...' : '')
+        })
+      }
+    }
+
+    // Save user message to database (save after getting context to avoid including current message in context)
+    await db.saveMessage(currentChatId, 'user', query)
 
     // Create a ReadableStream for streaming response
     const stream = new ReadableStream({
@@ -432,29 +522,55 @@ export async function POST(request: NextRequest) {
 
         try {
           // Step 1: Classify the query
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing query...', stage: 'analyzing' })}\n\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'status',
+            message: 'Analyzing query...',
+            stage: 'analyzing',
+            chatId: currentChatId
+          })}\n\n`))
 
-          const classification = await classifyQuery(query)
+          const classification = await classifyQuery(query, chatContext)
+
+          // Log classification with context info
+          await db.logActivity(userId, 'INFO', 'Query classified', {
+            chatId: currentChatId,
+            requiresSearch: classification.requiresSearch,
+            hasContext: !!chatContext,
+            contextLength: chatContext?.length || 0,
+            reasoning: classification.reasoning
+          })
 
           if (!classification.requiresSearch) {
             // Direct answer without web search
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'status',
-              message: 'Generating answer from knowledge base...',
+              message: chatContext ? 'Generating answer using conversation context...' : 'Generating answer from knowledge base...',
               stage: 'generating',
               searchTerms: [],
-              requiresSearch: false
+              requiresSearch: false,
+              chatId: currentChatId
             })}\n\n`))
 
             let fullAnswer = ""
-            for await (const chunk of generateDirectAnswer(query)) {
+            for await (const chunk of generateDirectAnswer(query, chatContext)) {
               fullAnswer += chunk
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'answer_chunk',
                 chunk: chunk,
-                fullAnswer: fullAnswer
+                fullAnswer: fullAnswer,
+                chatId: currentChatId
               })}\n\n`))
             }
+
+            // Save assistant response to database
+            await db.saveMessage(
+              currentChatId,
+              'assistant',
+              fullAnswer,
+              false,
+              [],
+              []
+            )
 
             // Send the complete answer without sources
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -464,8 +580,15 @@ export async function POST(request: NextRequest) {
               sources: [],
               timestamp: new Date().toISOString(),
               requiresSearch: false,
-              searchTerms: []
+              searchTerms: [],
+              chatId: currentChatId
             })}\n\n`))
+
+            await db.logActivity(userId, 'INFO', 'Search completed without web search', {
+              chatId: currentChatId,
+              query,
+              answerLength: fullAnswer.length
+            })
 
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))
             controller.close()
@@ -478,7 +601,8 @@ export async function POST(request: NextRequest) {
             message: `Searching for: ${classification.searchTerms.join(', ')}...`,
             stage: 'searching',
             searchTerms: classification.searchTerms,
-            requiresSearch: true
+            requiresSearch: true,
+            chatId: currentChatId
           })}\n\n`))
 
           // Implement feedback loop: search and evaluate context up to 3 times
@@ -493,6 +617,11 @@ export async function POST(request: NextRequest) {
 
             if (sources.length === 0) {
               if (searchAttempt === maxAttempts) {
+                await db.logActivity(userId, 'WARN', 'No sources found after all attempts', {
+                  chatId: currentChatId,
+                  query,
+                  searchTerms: currentSearchTerms
+                })
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found for the search terms' })}\n\n`))
                 controller.close()
                 return
@@ -517,7 +646,8 @@ export async function POST(request: NextRequest) {
               message: `Refining search: ${evaluation.newSearchTerms?.join(', ')}...`,
               stage: 'searching',
               searchTerms: evaluation.newSearchTerms || [query],
-              requiresSearch: true
+              requiresSearch: true,
+              chatId: currentChatId
             })}\n\n`))
 
             currentSearchTerms = evaluation.newSearchTerms || [query]
@@ -530,42 +660,70 @@ export async function POST(request: NextRequest) {
             sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
             message: 'Analyzing sources...',
             stage: 'analyzing',
-            searchTerms: currentSearchTerms
+            searchTerms: currentSearchTerms,
+            chatId: currentChatId
           })}\n\n`))
 
           // Generate answer with streaming
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'status',
             message: 'Generating comprehensive answer...',
-            stage: 'generating'
+            stage: 'generating',
+            chatId: currentChatId
           })}\n\n`))
 
           let fullAnswer = ""
-          for await (const chunk of generateAnswer(query, sources)) {
+          for await (const chunk of generateAnswer(query, sources, chatContext)) {
             fullAnswer += chunk
             // Send streaming answer chunks
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'answer_chunk',
               chunk: chunk,
-              fullAnswer: fullAnswer
+              fullAnswer: fullAnswer,
+              chatId: currentChatId
             })}\n\n`))
           }
+
+          // Save assistant response to database
+          const sourcesForDb = sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet }))
+          await db.saveMessage(
+            currentChatId,
+            'assistant',
+            fullAnswer,
+            true,
+            currentSearchTerms,
+            sourcesForDb
+          )
 
           // Send the complete answer
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'answer',
             answer: fullAnswer,
             query,
-            sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
+            sources: sourcesForDb,
             timestamp: new Date().toISOString(),
             requiresSearch: true,
-            searchTerms: currentSearchTerms
+            searchTerms: currentSearchTerms,
+            chatId: currentChatId
           })}\n\n`))
+
+          await db.logActivity(userId, 'INFO', 'Search completed with web search', {
+            chatId: currentChatId,
+            query,
+            sourcesFound: sources.length,
+            answerLength: fullAnswer.length,
+            searchTerms: currentSearchTerms
+          })
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))
           controller.close()
         } catch (error) {
           console.error('Streaming error:', error)
+          await db.logActivity(userId, 'ERROR', 'Streaming error occurred', {
+            chatId: currentChatId,
+            query,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'An error occurred while processing your request' })}\n\n`))
           controller.close()
         }

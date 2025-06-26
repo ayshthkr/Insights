@@ -24,12 +24,14 @@
     "markdown-to-jsx": "^7.7.8",
     "next": "15.3.4",
     "next-themes": "^0.4.6",
+    "nextjs-toploader": "^3.8.16",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
+    "svix": "^1.68.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

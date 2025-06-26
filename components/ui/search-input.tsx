@@ -35,7 +35,7 @@ export function SearchInput({
 
   return (
     <form onSubmit={handleSubmit} className={cn("relative w-full", className)}>
-      <div className="relative">
+      <div className="relative flex items-center">
         <input
           type="text"
           value={query}
@@ -57,16 +57,16 @@ export function SearchInput({
           disabled={!query.trim() || isLoading}
           className={cn(
             "absolute right-2 top-1/2 -translate-y-1/2",
-            "p-2 rounded-xl bg-blue-500 text-white",
+            "h-8 w-8 rounded-xl bg-blue-500 text-white",
             "hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed",
             "transition-colors duration-200",
-            "flex items-center justify-center"
+            "flex items-center justify-center flex-shrink-0"
           )}
         >
           {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4" />
           )}
         </button>
       </div>

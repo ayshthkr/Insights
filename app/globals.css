@@ -251,3 +251,40 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Perfect vertical alignment utilities */
+.flex-center {
+  @apply flex items-center justify-center;
+}
+
+.flex-y-center {
+  @apply flex items-center;
+}
+
+.flex-x-center {
+  @apply flex justify-center;
+}
+
+/* Input and button alignment helpers */
+.input-button-container {
+  @apply relative flex items-center;
+}
+
+.input-button {
+  @apply absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center flex-shrink-0;
+}
+
+/* Consistent sizing for search elements */
+.search-icon-button {
+  @apply h-8 w-8 p-0 flex items-center justify-center flex-shrink-0;
+}
+
+.search-input-base {
+  @apply w-full px-4 py-3 pr-12 focus:outline-none transition-all duration-200;
+}
+
+/* Prevent layout shift during loading states */
+.loading-preserve-layout {
+  min-height: inherit;
+  min-width: inherit;
+}

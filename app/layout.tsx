@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "next-themes"
 import { ClerkProvider } from "@clerk/nextjs"
+import NextTopLoader from "nextjs-toploader"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} font-sans antialiased`}>
+          <NextTopLoader color="#00a984" height={4} />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
           </ThemeProvider>

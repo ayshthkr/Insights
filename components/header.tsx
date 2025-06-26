@@ -1,44 +1,35 @@
 "use client"
-import { Search, Moon, Sun, MessageSquare } from "lucide-react"
+import { Moon, Sun, MessageSquare } from "lucide-react"
 import { useTheme } from "next-themes"
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
-  const router = useRouter()
-
-  const handleNewChat = () => {
-    // Clear any existing state and navigate to home
-    router.push('/')
-    router.refresh()
-  }
 
   return (
     <header className="flex justify-between items-center p-4 h-16">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-          <Search className="w-5 h-5 text-white" />
-        </div>
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+          <Link href={'/'} className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent hover:underline decoration-teal-600">
             Insights
-          </h1>
+          </Link>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
         <SignedIn>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-lg border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:border-emerald-200 dark:hover:border-emerald-700"
-            onClick={handleNewChat}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            New Chat
-          </Button>
+          <Link href={'/'}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:border-emerald-200 dark:hover:border-emerald-700"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              New Chat
+            </Button>
+          </Link>
         </SignedIn>
 
         <Button

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Brain, Globe, ExternalLink } from "lucide-react"
+import { Search, Brain, Globe, ExternalLink, ChevronUp } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
@@ -54,6 +54,7 @@ function getStagesForQuery(requiresSearch?: boolean) {
 export function SearchProgress({ query, stage, sources, streamingStage, streamingAnswer }: SearchProgressProps) {
   const [progress, setProgress] = useState(0)
   const [currentStageIndex, setCurrentStageIndex] = useState(0)
+  const [searchTermsExpanded, setSearchTermsExpanded] = useState(true)
 
   // Get appropriate stages based on whether search is required
   const currentStages = getStagesForQuery(streamingStage?.requiresSearch)
@@ -106,53 +107,6 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
               )}
             </h2>
           </div>
-
-          {/* Search Terms Display */}
-          {streamingStage?.searchTerms && streamingStage.searchTerms.length > 0 && (streamingStage.stage === 'searching' || streamingStage.stage === 'analyzing') && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-4"
-            >
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Searching for these terms</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {streamingStage.searchTerms.map((term, index) => (
-                    <motion.span
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{
-                        delay: index * 0.1,
-                        type: "spring",
-                        stiffness: 200,
-                        damping: 15
-                      }}
-                      className="relative group"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur-sm opacity-20 group-hover:opacity-30 transition-opacity" />
-                      <span className="relative inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200">
-                        <span className="mr-1">🔍</span>
-                        &ldquo;{term}&rdquo;
-                      </span>
-                    </motion.span>
-                  ))}
-                </div>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: (streamingStage.searchTerms.length * 0.1) + 0.5 }}
-                  className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 text-center"
-                >
-                  Using {streamingStage.searchTerms.length} search term{streamingStage.searchTerms.length !== 1 ? 's' : ''} to find the most relevant information
-                </motion.p>
-              </div>
-            </motion.div>
-          )}
 
           {/* Detailed search information */}
           {streamingStage && (
@@ -252,6 +206,87 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
             )
           })}
         </div>
+
+        {/* Collapsible Search Terms Display (appears after "Searching the web" stage) */}
+        <AnimatePresence>
+          {streamingStage?.searchTerms && streamingStage.searchTerms.length > 0 &&
+           (streamingStage.stage === 'searching' || streamingStage.stage === 'analyzing' || streamingStage.stage === 'generating') && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mb-6"
+            >
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg overflow-hidden">
+                {/* Clickable Header */}
+                <button
+                  onClick={() => setSearchTermsExpanded(!searchTermsExpanded)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-emerald-100/50 dark:hover:bg-emerald-800/30 transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      Searching for these terms ({streamingStage.searchTerms.length})
+                    </span>
+                  </div>
+                  <motion.div
+                    animate={{ rotate: searchTermsExpanded ? 0 : 180 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </motion.div>
+                </button>
+
+                {/* Collapsible Content */}
+                <AnimatePresence>
+                  {searchTermsExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-4">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {streamingStage.searchTerms.map((term, index) => (
+                            <motion.span
+                              key={index}
+                              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              transition={{
+                                delay: index * 0.1,
+                                type: "spring",
+                                stiffness: 200,
+                                damping: 15
+                              }}
+                              className="relative group"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur-sm opacity-20 group-hover:opacity-30 transition-opacity" />
+                              <span className="relative inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200">
+                                <span className="mr-1">🔍</span>
+                                &ldquo;{term}&rdquo;
+                              </span>
+                            </motion.span>
+                          ))}
+                        </div>
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: (streamingStage.searchTerms.length * 0.1) + 0.3 }}
+                          className="text-xs text-emerald-600 dark:text-emerald-400 text-center"
+                        >
+                          Using {streamingStage.searchTerms.length} search term{streamingStage.searchTerms.length !== 1 ? 's' : ''} to find the most relevant information
+                        </motion.p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Sources Display */}
         <AnimatePresence>
