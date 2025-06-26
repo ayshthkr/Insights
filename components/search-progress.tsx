@@ -22,6 +22,8 @@ interface SearchProgressProps {
     message: string
     sources?: SearchResult[]
     answer?: string
+    searchTerms?: string[]
+    requiresSearch?: boolean
     searchDetails?: {
       searchedFor: string
       foundSources: number
@@ -32,29 +34,45 @@ interface SearchProgressProps {
 }
 
 const stages = [
+  { id: "analyzing", label: "Analyzing query", icon: Brain, description: "Understanding your question" },
   { id: "searching", label: "Searching the web", icon: Search, description: "Finding relevant sources" },
-  { id: "analyzing", label: "Analyzing sources", icon: Globe, description: "Processing information" },
+  { id: "processing", label: "Processing content", icon: Globe, description: "Analyzing information" },
   { id: "generating", label: "Generating answer", icon: Brain, description: "Creating comprehensive response" },
   { id: "complete", label: "Complete", icon: CheckCircle, description: "Ready to display" },
 ]
+
+// Create a dynamic stages array based on whether search is required
+function getStagesForQuery(requiresSearch?: boolean) {
+  if (requiresSearch === false) {
+    return [
+      { id: "analyzing", label: "Analyzing query", icon: Brain, description: "Understanding your question" },
+      { id: "generating", label: "Generating answer", icon: Brain, description: "Creating response from knowledge" },
+      { id: "complete", label: "Complete", icon: CheckCircle, description: "Ready to display" },
+    ]
+  }
+  return stages
+}
 
 export function SearchProgress({ query, stage, sources, streamingStage, streamingAnswer }: SearchProgressProps) {
   const [progress, setProgress] = useState(0)
   const [currentStageIndex, setCurrentStageIndex] = useState(0)
 
+  // Get appropriate stages based on whether search is required
+  const currentStages = getStagesForQuery(streamingStage?.requiresSearch)
+
   useEffect(() => {
     let stageIndex = 0
     if (streamingStage) {
-      stageIndex = stages.findIndex((s) => s.id === streamingStage.stage)
+      stageIndex = currentStages.findIndex((s) => s.id === streamingStage.stage)
     } else {
-      stageIndex = stages.findIndex((s) => stage.toLowerCase().includes(s.id))
+      stageIndex = currentStages.findIndex((s) => stage.toLowerCase().includes(s.id))
     }
 
     if (stageIndex !== -1) {
       setCurrentStageIndex(stageIndex)
-      setProgress((stageIndex + 1) * 25)
+      setProgress(((stageIndex + 1) / currentStages.length) * 100)
     }
-  }, [stage, streamingStage])
+  }, [stage, streamingStage, currentStages])
 
   return (
     <motion.div
@@ -81,23 +99,51 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
                 </>
               ) : (
                 <>
-                  Searching for: <span className="text-emerald-600 dark:text-emerald-400">&ldquo;{query}&rdquo;</span>
+                  {streamingStage?.requiresSearch === false ? (
+                    <>Answering: <span className="text-emerald-600 dark:text-emerald-400">&ldquo;{query}&rdquo;</span></>
+                  ) : (
+                    <>Searching for: <span className="text-emerald-600 dark:text-emerald-400">&ldquo;{query}&rdquo;</span></>
+                  )}
                 </>
               )}
             </h2>
           </div>
 
+          {/* Search Terms Display */}
+          {streamingStage?.searchTerms && streamingStage.searchTerms.length > 0 && streamingStage.requiresSearch && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-slate-600 dark:text-slate-400">🔍 Searching with terms:</span>
+                {streamingStage.searchTerms.map((term, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
+                  >
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* Detailed search information */}
-          {streamingStage?.searchDetails && (
+          {streamingStage && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="text-sm text-slate-600 dark:text-slate-400 mb-3"
             >
-              {streamingStage.stage === 'searching' && (
+              {streamingStage.stage === 'analyzing' && streamingStage.requiresSearch === false && (
+                <p>🤖 Using general knowledge to answer your question...</p>
+              )}
+              {streamingStage.stage === 'searching' && streamingStage.requiresSearch === true && (
                 <p>🔍 Scanning the web with Exa AI for relevant sources...</p>
               )}
-              {streamingStage.stage === 'analyzing' && streamingStage.searchDetails.foundSources > 0 && (
+              {streamingStage.stage === 'analyzing' && streamingStage.searchDetails && streamingStage.searchDetails.foundSources > 0 && (
                 <p>📊 Found {streamingStage.searchDetails.foundSources} relevant sources, analyzing content...</p>
               )}
               {streamingStage.stage === 'generating' && (
@@ -111,7 +157,7 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
 
         {/* Stages */}
         <div className="space-y-4 mb-6">
-          {stages.map((stageItem, index) => {
+          {currentStages.map((stageItem, index) => {
             const isActive = index === currentStageIndex
             const isCompleted = index < currentStageIndex
             const Icon = stageItem.icon

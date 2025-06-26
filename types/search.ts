@@ -10,6 +10,8 @@ export interface SearchResponse {
   answer: string;
   sources: SearchResult[];
   timestamp: string;
+  requiresSearch?: boolean;
+  searchTerms?: string[];
 }
 
 export interface SearchRequest {
@@ -18,4 +20,10 @@ export interface SearchRequest {
 
 export interface ApiError {
   error: string;
+}
+
+export interface QueryClassification {
+  requiresSearch: boolean;
+  searchTerms: string[];
+  reasoning: string;
 }

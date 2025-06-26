@@ -15,6 +15,12 @@ interface SearchResult {
   content?: string
 }
 
+interface QueryClassification {
+  requiresSearch: boolean
+  searchTerms: string[]
+  reasoning: string
+}
+
 async function extractContent(url: string): Promise<string> {
   try {
     const response = await axios.get(url, {
@@ -79,39 +85,168 @@ async function extractContent(url: string): Promise<string> {
   }
 }
 
-async function searchWeb(query: string): Promise<SearchResult[]> {
+async function classifyQuery(query: string): Promise<QueryClassification> {
   try {
-    const searchResults = await exa.searchAndContents(query, {
-      numResults: 5,
-      useAutoprompt: true,
-      type: "auto",
-    })
+    // First, do a quick check for obviously simple queries that don't need web search
+    const simplePatterns = [
+      /^(hi|hello|hey|hiya|greetings)$/i,
+      /^(how are you|what's up|wassup)$/i,
+      /^(thanks|thank you|thx)$/i,
+      /^(bye|goodbye|see you|cya)$/i,
+      /^(yes|no|maybe|sure|ok|okay)$/i,
+      /^(what is \d+[\+\-\*\/]\d+)$/i, // Simple math
+      /^(define|what does .* mean|etymology of)$/i,
+    ]
 
-    const results: SearchResult[] = []
+    // Check if query matches simple patterns
+    const isSimpleQuery = simplePatterns.some(pattern => pattern.test(query.trim()))
 
-    for (const result of searchResults.results) {
-      // Validate that we have the required fields
-      if (!result.url || typeof result.url !== 'string') {
-        console.warn('Skipping result with invalid URL:', result)
-        continue
+    if (isSimpleQuery) {
+      return {
+        requiresSearch: false,
+        searchTerms: [],
+        reasoning: "Simple conversational query or basic question that can be answered with general knowledge"
       }
-
-      const searchResult: SearchResult = {
-        title: (result.title && typeof result.title === 'string') ? result.title : "Untitled",
-        url: result.url,
-        snippet: (result.text && typeof result.text === 'string') ? result.text.substring(0, 200) + "..." : "No snippet available",
-        content: (result.text && typeof result.text === 'string') ? result.text : "",
-      }
-
-      // If we don't have content, try to extract it
-      if (!searchResult.content && result.url) {
-        searchResult.content = await extractContent(result.url)
-      }
-
-      results.push(searchResult)
     }
 
-    return results
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+
+    const prompt = `
+You are an AI assistant that determines whether a user query requires web search or can be answered with general knowledge.
+
+Analyze this query: "${query}"
+
+IMPORTANT: Be conservative - prefer NOT requiring web search unless the query clearly needs current/real-time information.
+
+Consider these criteria for requiring web search:
+- Current events, news, or recent developments (after 2023)
+- Real-time information (stock prices, weather, sports scores, current time/date)
+- Specific facts that change frequently (prices, availability, rankings)
+- Product reviews, current pricing, or availability
+- Recent research papers or discoveries (2024 or later)
+- Current trends, viral content, or social media phenomena
+- Breaking news or ongoing situations
+- Specific statistics or data that change regularly
+- Questions about "what's happening now" or "latest" information
+
+Consider these criteria for NOT requiring web search (use general knowledge):
+- Basic greetings, small talk, or conversational responses
+- General explanations of concepts, theories, or phenomena
+- Historical facts that don't change (events before 2023)
+- Mathematical concepts, calculations, or problems
+- Basic scientific principles and established facts
+- Language questions (definitions, etymology, grammar, translations)
+- General advice, how-to questions, or tutorials
+- Philosophical discussions or thought experiments
+- Creative writing, storytelling, or brainstorming
+- Code examples, programming concepts, or technical explanations
+- Academic subjects with established knowledge
+
+If web search IS required, generate 2-3 specific, focused search terms that would be most effective for finding relevant information.
+
+Respond in JSON format:
+{
+  "requiresSearch": boolean,
+  "searchTerms": ["term1", "term2", "term3"],
+  "reasoning": "Brief explanation of the decision"
+}
+
+Important: Keep search terms concise and specific. Focus on key concepts rather than full sentences.
+Examples of search terms: "AI trends 2024", "stock market news", "climate change data"
+NOT: "what are the latest trends in artificial intelligence technology"`
+
+    const result = await model.generateContent(prompt)
+    const responseText = result.response.text()
+
+    // Extract JSON from the response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error("Failed to parse classification response")
+    }
+
+    const classification = JSON.parse(jsonMatch[0]) as QueryClassification
+
+    // Validate the response structure
+    if (typeof classification.requiresSearch !== 'boolean') {
+      throw new Error("Invalid classification response structure")
+    }
+
+    return classification
+  } catch (error) {
+    console.error("Error classifying query:", error)
+
+    // Improved fallback logic - check query length and common patterns
+    const queryLower = query.toLowerCase().trim()
+    const queryWords = queryLower.split(/\s+/)
+
+    // For very short queries or common greetings, default to no search
+    if (queryWords.length <= 2 &&
+        (queryLower.includes('hi') || queryLower.includes('hello') ||
+         queryLower.includes('hey') || queryLower.includes('thanks') ||
+         queryLower.includes('bye') || queryLower.includes('yes') ||
+         queryLower.includes('no'))) {
+      return {
+        requiresSearch: false,
+        searchTerms: [],
+        reasoning: "Classification failed, but query appears to be simple greeting/response"
+      }
+    }
+
+    // For longer queries or ambiguous cases, default to search
+    return {
+      requiresSearch: true,
+      searchTerms: [query],
+      reasoning: "Classification failed, defaulting to web search for safety"
+    }
+  }
+}
+
+async function searchWeb(searchTerms: string[]): Promise<SearchResult[]> {
+  try {
+    const allResults: SearchResult[] = []
+
+    // Search for each term and combine results
+    for (const term of searchTerms) {
+      try {
+        const searchResults = await exa.searchAndContents(term, {
+          numResults: Math.ceil(5 / searchTerms.length), // Distribute results across terms
+          useAutoprompt: true,
+          type: "auto",
+        })
+
+        for (const result of searchResults.results) {
+          // Validate that we have the required fields
+          if (!result.url || typeof result.url !== 'string') {
+            console.warn('Skipping result with invalid URL:', result)
+            continue
+          }
+
+          const searchResult: SearchResult = {
+            title: (result.title && typeof result.title === 'string') ? result.title : "Untitled",
+            url: result.url,
+            snippet: (result.text && typeof result.text === 'string') ? result.text.substring(0, 200) + "..." : "No snippet available",
+            content: (result.text && typeof result.text === 'string') ? result.text : "",
+          }
+
+          // If we don't have content, try to extract it
+          if (!searchResult.content && result.url) {
+            searchResult.content = await extractContent(result.url)
+          }
+
+          allResults.push(searchResult)
+        }
+      } catch (termError) {
+        console.error(`Error searching for term "${term}":`, termError)
+        // Continue with other terms if one fails
+      }
+    }
+
+    // Remove duplicates based on URL and limit total results
+    const uniqueResults = allResults.filter((result, index, self) =>
+      index === self.findIndex(r => r.url === result.url)
+    ).slice(0, 5)
+
+    return uniqueResults
   } catch (error) {
     console.error("Error searching web:", error)
     return []
@@ -173,6 +308,45 @@ Please provide a well-structured markdown-formatted answer:`
   }
 }
 
+async function* generateDirectAnswer(query: string): AsyncGenerator<string, void, unknown> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+
+    const prompt = `
+You are an AI assistant that provides comprehensive, accurate answers using your general knowledge.
+
+Query: "${query}"
+
+Instructions:
+1. Provide a comprehensive answer to the user's query using your general knowledge
+2. Be accurate and informative
+3. Use a natural, conversational tone
+4. Format your response using Markdown syntax for better readability:
+   - Use **bold** for emphasis
+   - Use *italics* for lesser emphasis
+   - Use bullet points and numbered lists where appropriate
+   - Use headers (##, ###) to structure longer responses
+   - Use code blocks \`\`\` for any code examples
+   - Use blockquotes > for quotes when appropriate
+5. If you're uncertain about current information, mention that the information might be outdated
+6. Be helpful and engaging in your response
+
+Please provide a well-structured markdown-formatted answer:`
+
+    const result = await model.generateContentStream(prompt)
+
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text()
+      if (chunkText) {
+        yield chunkText
+      }
+    }
+  } catch (error) {
+    console.error("Error generating direct answer:", error)
+    yield "I apologize, but I encountered an error while generating an answer. Please try again."
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { query } = await request.json()
@@ -195,14 +369,61 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder()
 
         try {
-          // Send initial status
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Searching the web...', stage: 'searching' })}\n\n`))
+          // Step 1: Classify the query
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing query...', stage: 'analyzing' })}\n\n`))
 
-          // Search the web
-          const sources = await searchWeb(query)
+          const classification = await classifyQuery(query)
+
+          if (!classification.requiresSearch) {
+            // Direct answer without web search
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'status',
+              message: 'Generating answer from knowledge base...',
+              stage: 'generating',
+              searchTerms: [],
+              requiresSearch: false
+            })}\n\n`))
+
+            let fullAnswer = ""
+            for await (const chunk of generateDirectAnswer(query)) {
+              fullAnswer += chunk
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'answer_chunk',
+                chunk: chunk,
+                fullAnswer: fullAnswer
+              })}\n\n`))
+            }
+
+            // Send the complete answer without sources
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'answer',
+              answer: fullAnswer,
+              query,
+              sources: [],
+              timestamp: new Date().toISOString(),
+              requiresSearch: false,
+              searchTerms: []
+            })}\n\n`))
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))
+            controller.close()
+            return
+          }
+
+          // Step 2: Web search is required
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'status',
+            message: `Searching for: ${classification.searchTerms.join(', ')}...`,
+            stage: 'searching',
+            searchTerms: classification.searchTerms,
+            requiresSearch: true
+          })}\n\n`))
+
+          // Search the web using the generated search terms
+          const sources = await searchWeb(classification.searchTerms)
 
           if (sources.length === 0) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found' })}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found for the search terms' })}\n\n`))
             controller.close()
             return
           }
@@ -212,11 +433,16 @@ export async function POST(request: NextRequest) {
             type: 'sources',
             sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
             message: 'Analyzing sources...',
-            stage: 'analyzing'
+            stage: 'analyzing',
+            searchTerms: classification.searchTerms
           })}\n\n`))
 
           // Generate answer with streaming
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', message: 'Generating answer...', stage: 'generating' })}\n\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'status',
+            message: 'Generating comprehensive answer...',
+            stage: 'generating'
+          })}\n\n`))
 
           let fullAnswer = ""
           for await (const chunk of generateAnswer(query, sources)) {
@@ -235,7 +461,9 @@ export async function POST(request: NextRequest) {
             answer: fullAnswer,
             query,
             sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            requiresSearch: true,
+            searchTerms: classification.searchTerms
           })}\n\n`))
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))

@@ -1,11 +1,14 @@
 # Perplexity Clone
 
-A modern AI-powered search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models.
+A modern AI-powered search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
 
 ## Features
 
 - 🔍 **AI-Powered Search**: Utilizes Google Gemini Flash 2.5 for intelligent response generation
-- 🌐 **Real-time Web Search**: Integrates with Exa API for semantic web search
+- 🧠 **Smart Query Classification**: Automatically determines whether queries need web search or can be answered with general knowledge
+- 🎯 **Intelligent Search Terms**: Generates 2-3 optimized search terms for web queries and displays them to users
+- 🌐 **Real-time Web Search**: Integrates with Exa API for semantic web search when needed
+- ⚡ **Optimized Performance**: Avoids unnecessary web searches for simple questions, greetings, and general knowledge queries
 - 📱 **Responsive Design**: Modern, mobile-first UI built with Tailwind CSS and shadcn/ui
 - ⚡ **Fast Performance**: Built on Next.js 15 with React 19 and Turbopack
 - 🎯 **Enhanced Citation Tooltips**: Wider, more compact tooltips with favicon display and quick "Visit" action
@@ -94,7 +97,39 @@ Try asking questions like:
 - "What are the latest developments in AI technology?"
 - "Explain quantum computing and its practical applications"
 - "What are the current trends in cryptocurrency markets?"
-- "How do I get started with machine learning?"
+## How It Works
+
+### Intelligent Query Classification
+
+The application uses an advanced query classification system to optimize performance and reduce unnecessary API calls:
+
+1. **Pattern Recognition**: Simple queries (greetings, basic math, definitions) are detected using regex patterns
+2. **AI Classification**: Complex queries are analyzed using Google Gemini Flash 2.5 to determine if web search is needed
+3. **Smart Fallbacks**: Robust error handling ensures simple queries aren't sent to web search APIs unnecessarily
+
+### Search Flow
+
+1. **Query Analysis**: User query is classified as either requiring web search or answerable with general knowledge
+2. **Conditional Search**: Only queries requiring current information trigger web searches via Exa API
+3. **Term Generation**: For web searches, 2-3 optimized search terms are generated and displayed to the user
+4. **Response Generation**: Comprehensive answers are generated using either web sources or general knowledge
+5. **Real-time Updates**: Users see live progress including search terms being used
+
+### Query Types
+
+**Requires Web Search:**
+- Current events and news
+- Real-time data (stock prices, weather, sports)
+- Recent research and discoveries
+- Product reviews and pricing
+- Current trends and viral content
+
+**Uses General Knowledge:**
+- Basic greetings and conversation
+- Historical facts and established science
+- Mathematical concepts and calculations
+- Definitions and explanations
+- Programming concepts and tutorials
 
 ## Project Structure
 

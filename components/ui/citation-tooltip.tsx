@@ -54,15 +54,15 @@ export function CitationTooltip({ source, children, onGoToSource }: CitationTool
   }
 
   return (
-    <div className="relative inline-block">
-      <div
+    <span className="relative inline-block">
+      <span
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         onClick={handleClick}
         className="cursor-pointer"
       >
         {children}
-      </div>
+      </span>
 
       <AnimatePresence>
         {isVisible && (
@@ -121,6 +121,6 @@ export function CitationTooltip({ source, children, onGoToSource }: CitationTool
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </span>
   )
 }

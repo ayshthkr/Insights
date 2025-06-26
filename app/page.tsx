@@ -20,6 +20,8 @@ interface SearchResponse {
   answer: string
   sources: SearchResult[]
   timestamp: string
+  requiresSearch?: boolean
+  searchTerms?: string[]
 }
 
 interface StreamingState {
@@ -27,6 +29,8 @@ interface StreamingState {
   message: string
   sources?: SearchResult[]
   answer?: string
+  searchTerms?: string[]
+  requiresSearch?: boolean
   searchDetails?: {
     searchedFor: string
     foundSources: number
@@ -102,6 +106,8 @@ export default function Home() {
                   setStreamingState({
                     stage: data.stage,
                     message: data.message,
+                    searchTerms: data.searchTerms || [],
+                    requiresSearch: data.requiresSearch,
                     searchDetails: data.stage === 'searching' ? {
                       searchedFor: query,
                       foundSources: 0
@@ -113,6 +119,7 @@ export default function Home() {
                     stage: data.stage,
                     message: data.message,
                     sources: data.sources,
+                    searchTerms: data.searchTerms || [],
                     searchDetails: {
                       searchedFor: query,
                       foundSources: data.sources.length,
@@ -132,7 +139,9 @@ export default function Home() {
                     query: data.query,
                     answer: data.answer,
                     sources: data.sources,
-                    timestamp: data.timestamp
+                    timestamp: data.timestamp,
+                    requiresSearch: data.requiresSearch,
+                    searchTerms: data.searchTerms
                   })
                   setStreamingState({ stage: 'complete', message: 'Complete' })
                   setStreamingAnswer("")
