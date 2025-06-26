@@ -143,7 +143,15 @@ export function SearchResults({ result }: SearchResultsProps) {
           <span>Searched at {formatTimestamp(result.timestamp)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={copyToClipboard}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyToClipboard}
+            className={cn(
+              "transition-all duration-200",
+              copied && "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+            )}
+          >
             {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Copied!' : 'Copy'}
           </Button>
@@ -253,38 +261,38 @@ export function SearchResults({ result }: SearchResultsProps) {
                     )
                   },
                   h1: ({ children, ...props }) => (
-                    <h1 {...props} className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+                    <h1 {...props} className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 mt-6 first:mt-0 block leading-tight">
                       {children}
                     </h1>
                   ),
                   h2: ({ children, ...props }) => (
-                    <h2 {...props} className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                    <h2 {...props} className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-3 mt-5 first:mt-0 block leading-tight">
                       {children}
                     </h2>
                   ),
                   h3: ({ children, ...props }) => (
-                    <h3 {...props} className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                    <h3 {...props} className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2 mt-4 first:mt-0 block leading-tight">
                       {children}
                     </h3>
                   ),
                   p: ({ children, ...props }) => (
-                    <p {...props} className="mb-4 leading-relaxed">
+                    <p {...props} className="mb-4 last:mb-0 leading-relaxed text-slate-700 dark:text-slate-300 block">
                       {children}
                     </p>
                   ),
                   ul: ({ children, ...props }) => (
-                    <ul {...props} className="list-disc list-inside mb-4 space-y-1">
+                    <ul {...props} className="list-disc ml-6 mb-4 space-y-2 block">
                       {children}
                     </ul>
                   ),
                   ol: ({ children, ...props }) => (
-                    <ol {...props} className="list-decimal list-inside mb-4 space-y-1">
+                    <ol {...props} className="list-decimal ml-6 mb-4 space-y-2 block">
                       {children}
                     </ol>
                   ),
                   li: ({ children, ...props }) => (
-                    <li {...props} className="text-slate-700 dark:text-slate-300">
-                      {children}
+                    <li {...props} className="text-slate-700 dark:text-slate-300 leading-relaxed block">
+                      <div className="inline">{children}</div>
                     </li>
                   ),
                   code: ({ children, className, ...props }) => {

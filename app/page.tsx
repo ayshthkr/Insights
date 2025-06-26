@@ -8,6 +8,7 @@ import { SearchProgress } from "@/components/search-progress"
 import { WelcomeSection } from "@/components/welcome-section"
 import { Header } from "@/components/header"
 import { cn } from "@/lib/utils"
+import { FaviconService } from "@/lib/favicon-service"
 
 interface SearchResult {
   title: string
@@ -115,17 +116,22 @@ export default function Home() {
                   })
                   break
                 case 'sources':
+                  const sources = data.sources
                   setStreamingState({
                     stage: data.stage,
                     message: data.message,
-                    sources: data.sources,
+                    sources: sources,
                     searchTerms: data.searchTerms || [],
                     searchDetails: {
                       searchedFor: query,
-                      foundSources: data.sources.length,
-                      exaResults: data.sources.map((s: SearchResult) => s.title)
+                      foundSources: sources.length,
+                      exaResults: sources.map((s: SearchResult) => s.title)
                     }
                   })
+                  // Prefetch favicons for all sources
+                  if (sources && sources.length > 0) {
+                    FaviconService.prefetchFavicons(sources.map((s: SearchResult) => s.url))
+                  }
                   break
                 case 'answer_chunk':
                   setStreamingAnswer(data.fullAnswer)
@@ -135,16 +141,21 @@ export default function Home() {
                   }, 100)
                   break
                 case 'answer':
-                  setSearchResult({
+                  const result = {
                     query: data.query,
                     answer: data.answer,
                     sources: data.sources,
                     timestamp: data.timestamp,
                     requiresSearch: data.requiresSearch,
                     searchTerms: data.searchTerms
-                  })
-                  setStreamingState({ stage: 'complete', message: 'Complete' })
+                  }
+                  setSearchResult(result)
+                  setStreamingState(null) // Remove complete stage
                   setStreamingAnswer("")
+                  // Prefetch favicons for result sources too
+                  if (result.sources && result.sources.length > 0) {
+                    FaviconService.prefetchFavicons(result.sources.map((s: SearchResult) => s.url))
+                  }
                   break
                 case 'complete':
                   setIsLoading(false)
@@ -226,29 +237,12 @@ export default function Home() {
                   isLoading={isLoading}
                   hasSearched={hasSearched}
                   currentQuery={currentQuery}
-                  onQueryComplete={() => setCurrentQuery("")}
                 />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Current Query Display */}
-          <AnimatePresence>
-            {hasSearched && currentQuery && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-4xl"
-              >
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 mb-6">
-                  <p className="text-slate-700 dark:text-slate-300 text-lg">
-                    &ldquo;{currentQuery}&rdquo;
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+
 
           {/* Progress/Loading State */}
           <AnimatePresence>
@@ -344,7 +338,13 @@ export default function Home() {
             className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 p-4 z-50 shadow-2xl"
           >
             <div className="container mx-auto max-w-4xl">
-              <SearchInterface onSearch={handleSearch} isLoading={isLoading} hasSearched={hasSearched} hasResults={!!searchResult} />
+              <SearchInterface
+                onSearch={handleSearch}
+                isLoading={isLoading}
+                hasSearched={hasSearched}
+                hasResults={!!searchResult}
+                currentQuery={isLoading ? currentQuery : ""}
+              />
             </div>
           </motion.div>
         )}

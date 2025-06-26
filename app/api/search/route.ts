@@ -201,6 +201,68 @@ NOT: "what are the latest trends in artificial intelligence technology"`
   }
 }
 
+async function evaluateContextQuality(query: string, sources: SearchResult[]): Promise<{ isInsufficient: boolean; newSearchTerms?: string[] }> {
+  try {
+    if (sources.length === 0) {
+      return { isInsufficient: true, newSearchTerms: [query] }
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+
+    // Combine source content for evaluation
+    const combinedContent = sources
+      .map(source => `${source.title}: ${source.content || source.snippet}`)
+      .join("\n\n")
+      .substring(0, 3000) // Limit content for evaluation
+
+    const prompt = `
+Evaluate whether the provided search results contain sufficient information to answer the user's query.
+
+User Query: "${query}"
+
+Search Results:
+${combinedContent}
+
+Analyze the search results and determine:
+1. Do the results contain relevant information to answer the user's query?
+2. Are there enough details to provide a comprehensive answer?
+3. If insufficient, what alternative search terms would be more effective?
+
+Respond in JSON format:
+{
+  "isInsufficient": boolean,
+  "reasoning": "Brief explanation of the evaluation",
+  "newSearchTerms": ["term1", "term2"] // Only if isInsufficient is true
+}
+
+Consider results insufficient if:
+- They don't directly relate to the query topic
+- They lack the specific information requested
+- They are too vague or general
+- The query requires more recent or specialized information`
+
+    const result = await model.generateContent(prompt)
+    const responseText = result.response.text()
+
+    // Extract JSON from the response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return { isInsufficient: false }
+    }
+
+    const evaluation = JSON.parse(jsonMatch[0])
+
+    return {
+      isInsufficient: evaluation.isInsufficient || false,
+      newSearchTerms: evaluation.newSearchTerms || []
+    }
+  } catch (error) {
+    console.error("Error evaluating context quality:", error)
+    // If evaluation fails, assume context is sufficient to avoid infinite loops
+    return { isInsufficient: false }
+  }
+}
+
 async function searchWeb(searchTerms: string[]): Promise<SearchResult[]> {
   try {
     const allResults: SearchResult[] = []
@@ -269,20 +331,20 @@ Content: ${source.content || source.snippet}
       .join("\n")
 
     const prompt = `
-You are an AI assistant that provides comprehensive, accurate answers based on web search results.
+You are a helpful AI assistant providing direct, comprehensive answers based on web search results.
 
-Query: "${query}"
+User Query: "${query}"
 
 Available Sources:
 ${combinedContent}
 
 Instructions:
-1. Provide a comprehensive answer to the user's query based on the provided sources
-2. Use specific information from the sources when possible
-3. Include relevant details and context
-4. If sources contradict each other, mention this
-5. Keep the answer informative but concise
-6. Use a natural, conversational tone
+1. Answer the user's query directly and comprehensively using the provided sources
+2. Start your response by directly addressing the question - do not begin with phrases like "Here's a summary" or "Based on my research"
+3. Use specific information from the sources when possible
+4. Include relevant details and context that would be helpful to the user
+5. If sources contradict each other, acknowledge the conflicting information
+6. Maintain a natural, conversational tone while being informative
 7. Include citations in the format [1], [2], etc. referencing the source numbers
 8. Format your response using Markdown syntax for better readability:
    - Use **bold** for emphasis
@@ -292,7 +354,7 @@ Instructions:
    - Use code blocks \`\`\` for any code examples
    - Use blockquotes > for quotes from sources
 
-Please provide a well-structured markdown-formatted answer:`
+Provide a well-structured, directly responsive answer that immediately addresses the user's question:`
 
     const result = await model.generateContentStream(prompt)
 
@@ -313,14 +375,14 @@ async function* generateDirectAnswer(query: string): AsyncGenerator<string, void
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
     const prompt = `
-You are an AI assistant that provides comprehensive, accurate answers using your general knowledge.
+You are a helpful AI assistant providing direct, comprehensive answers using your general knowledge.
 
-Query: "${query}"
+User Query: "${query}"
 
 Instructions:
-1. Provide a comprehensive answer to the user's query using your general knowledge
-2. Be accurate and informative
-3. Use a natural, conversational tone
+1. Answer the user's query directly and comprehensively using your general knowledge
+2. Start your response by directly addressing the question - do not begin with phrases like "Here's a summary" or "Based on my knowledge"
+3. Be accurate and informative while maintaining a natural, conversational tone
 4. Format your response using Markdown syntax for better readability:
    - Use **bold** for emphasis
    - Use *italics* for lesser emphasis
@@ -331,7 +393,7 @@ Instructions:
 5. If you're uncertain about current information, mention that the information might be outdated
 6. Be helpful and engaging in your response
 
-Please provide a well-structured markdown-formatted answer:`
+Provide a well-structured, directly responsive answer that immediately addresses the user's question:`
 
     const result = await model.generateContentStream(prompt)
 
@@ -419,13 +481,47 @@ export async function POST(request: NextRequest) {
             requiresSearch: true
           })}\n\n`))
 
-          // Search the web using the generated search terms
-          const sources = await searchWeb(classification.searchTerms)
+          // Implement feedback loop: search and evaluate context up to 3 times
+          let sources: SearchResult[] = []
+          let currentSearchTerms = classification.searchTerms
+          let searchAttempt = 1
+          const maxAttempts = 3
 
-          if (sources.length === 0) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found for the search terms' })}\n\n`))
-            controller.close()
-            return
+          while (searchAttempt <= maxAttempts) {
+            // Search the web using the current search terms
+            sources = await searchWeb(currentSearchTerms)
+
+            if (sources.length === 0) {
+              if (searchAttempt === maxAttempts) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No sources found for the search terms' })}\n\n`))
+                controller.close()
+                return
+              }
+              // Try with broader search terms
+              currentSearchTerms = [query]
+              searchAttempt++
+              continue
+            }
+
+            // Evaluate context quality
+            const evaluation = await evaluateContextQuality(query, sources)
+
+            if (!evaluation.isInsufficient || searchAttempt === maxAttempts) {
+              // Context is sufficient or we've reached max attempts
+              break
+            }
+
+            // Context is insufficient, try again with new search terms
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'status',
+              message: `Refining search: ${evaluation.newSearchTerms?.join(', ')}...`,
+              stage: 'searching',
+              searchTerms: evaluation.newSearchTerms || [query],
+              requiresSearch: true
+            })}\n\n`))
+
+            currentSearchTerms = evaluation.newSearchTerms || [query]
+            searchAttempt++
           }
 
           // Send sources found
@@ -434,7 +530,7 @@ export async function POST(request: NextRequest) {
             sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
             message: 'Analyzing sources...',
             stage: 'analyzing',
-            searchTerms: classification.searchTerms
+            searchTerms: currentSearchTerms
           })}\n\n`))
 
           // Generate answer with streaming
@@ -463,7 +559,7 @@ export async function POST(request: NextRequest) {
             sources: sources.map(s => ({ title: s.title, url: s.url, snippet: s.snippet })),
             timestamp: new Date().toISOString(),
             requiresSearch: true,
-            searchTerms: classification.searchTerms
+            searchTerms: currentSearchTerms
           })}\n\n`))
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`))

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Brain, CheckCircle, Globe, ExternalLink } from "lucide-react"
+import { Search, Brain, Globe, ExternalLink } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
@@ -38,7 +38,6 @@ const stages = [
   { id: "searching", label: "Searching the web", icon: Search, description: "Finding relevant sources" },
   { id: "processing", label: "Processing content", icon: Globe, description: "Analyzing information" },
   { id: "generating", label: "Generating answer", icon: Brain, description: "Creating comprehensive response" },
-  { id: "complete", label: "Complete", icon: CheckCircle, description: "Ready to display" },
 ]
 
 // Create a dynamic stages array based on whether search is required
@@ -47,7 +46,6 @@ function getStagesForQuery(requiresSearch?: boolean) {
     return [
       { id: "analyzing", label: "Analyzing query", icon: Brain, description: "Understanding your question" },
       { id: "generating", label: "Generating answer", icon: Brain, description: "Creating response from knowledge" },
-      { id: "complete", label: "Complete", icon: CheckCircle, description: "Ready to display" },
     ]
   }
   return stages
@@ -110,22 +108,48 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
           </div>
 
           {/* Search Terms Display */}
-          {streamingStage?.searchTerms && streamingStage.searchTerms.length > 0 && streamingStage.requiresSearch && (
+          {streamingStage?.searchTerms && streamingStage.searchTerms.length > 0 && (streamingStage.stage === 'searching' || streamingStage.stage === 'analyzing') && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-3"
+              transition={{ delay: 0.3 }}
+              className="mb-4"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-slate-600 dark:text-slate-400">🔍 Searching with terms:</span>
-                {streamingStage.searchTerms.map((term, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
-                  >
-                    {term}
-                  </span>
-                ))}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Searching for these terms</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {streamingStage.searchTerms.map((term, index) => (
+                    <motion.span
+                      key={index}
+                      initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{
+                        delay: index * 0.1,
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 15
+                      }}
+                      className="relative group"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur-sm opacity-20 group-hover:opacity-30 transition-opacity" />
+                      <span className="relative inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200">
+                        <span className="mr-1">🔍</span>
+                        &ldquo;{term}&rdquo;
+                      </span>
+                    </motion.span>
+                  ))}
+                </div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: (streamingStage.searchTerms.length * 0.1) + 0.5 }}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 text-center"
+                >
+                  Using {streamingStage.searchTerms.length} search term{streamingStage.searchTerms.length !== 1 ? 's' : ''} to find the most relevant information
+                </motion.p>
               </div>
             </motion.div>
           )}

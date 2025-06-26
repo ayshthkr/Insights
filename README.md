@@ -2,16 +2,41 @@
 
 A modern AI-powered search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
 
+## Recent Improvements
+
+### UI/UX Enhancements
+- 🏷️ **Enhanced Citation Tooltips**: Tooltips now automatically position below if there's insufficient space above
+- 🎯 **Smart Search Terms Display**: Beautiful, animated search terms shown during web search with enhanced visual design
+- 🔍 **Improved Search Interface**: Search bar shows current question (disabled) during answer generation and clears when complete
+- 📝 **Better Markdown Rendering**: Fixed list and heading alignment issues with improved spacing and block-level rendering
+- 🌐 **Favicon Prefetching**: Automatic favicon loading for all sources with elegant fallback to globe icon
+- 🎨 **Enhanced Copy Button**: Button component with proper hover effects and visual feedback
+
+### Backend Improvements
+- 🔄 **Intelligent Feedback Loop**: Backend automatically evaluates search context quality and performs up to 3 search iterations with refined terms if needed
+- 🎯 **Smart Context Evaluation**: AI-powered assessment of search result relevance and completeness
+- 💬 **Direct Answer Generation**: Responses start directly addressing the question without "Here's a summary..." prefixes
+- ⚡ **Adaptive Search Strategy**: Automatically refines search terms based on context quality evaluation
+- 🧠 **Enhanced Query Understanding**: Improved classification for determining when web search is needed vs. general knowledge responses
+
+### Technical Improvements
+- ⚡ **Hydration Issue Fixes**: Resolved SSR/client rendering mismatches in markdown components
+- 🎨 **Enhanced Progress Visualization**: Removed unnecessary "complete" step and improved search term presentation
+- 🔧 **Better List Rendering**: Fixed bullet point and content alignment issues in markdown
+- 🎪 **Improved Animations**: Smoother transitions and micro-interactions throughout the interface
+
 ## Features
 
 - 🔍 **AI-Powered Search**: Utilizes Google Gemini Flash 2.5 for intelligent response generation
 - 🧠 **Smart Query Classification**: Automatically determines whether queries need web search or can be answered with general knowledge
-- 🎯 **Intelligent Search Terms**: Generates 2-3 optimized search terms for web queries and displays them to users
-- 🌐 **Real-time Web Search**: Integrates with Exa API for semantic web search when needed
+- 🔄 **Intelligent Feedback Loop**: Backend evaluates context quality and refines search terms automatically (up to 3 iterations)
+- 🎯 **Intelligent Search Terms**: Generates 2-3 optimized search terms for web queries and displays them beautifully to users
+- 🌐 **Real-time Web Search**: Integrates with Exa API for semantic web search when needed with automatic refinement
 - ⚡ **Optimized Performance**: Avoids unnecessary web searches for simple questions, greetings, and general knowledge queries
+- 💬 **Direct Assistant Responses**: AI provides helpful, direct answers without generic prefixes like "Here's a summary..."
 - 📱 **Responsive Design**: Modern, mobile-first UI built with Tailwind CSS and shadcn/ui
 - ⚡ **Fast Performance**: Built on Next.js 15 with React 19 and Turbopack
-- 🎯 **Enhanced Citation Tooltips**: Wider, more compact tooltips with favicon display and quick "Visit" action
+- 🎯 **Enhanced Citation Tooltips**: Smart positioning tooltips with favicon display and improved user experience
 - 🌙 **Dark Mode**: Automatic dark/light theme support
 - 📊 **Compact Source Cards**: Streamlined, clickable source cards with improved hover effects
 - 🔄 **Smart Loading States**: Shows active query in disabled input during answer generation
@@ -22,7 +47,7 @@ A modern AI-powered search engine built with Next.js 15, React 19, and TypeScrip
 - 🗣️ **Improved Navigation**: New Chat button with proper styling and instant page refresh
 - 💬 **Interactive Source Cards**: Click-to-open source cards with enhanced visual feedback
 - ✨ **Sparkle Icon**: Clean answer presentation with elegant Sparkle icon (no "Answer" label)
-- 🖼️ **Favicon Integration**: Source tooltips automatically load and display website favicons
+- 🖼️ **Favicon Integration**: Source tooltips automatically load and display website favicons with prefetching
 
 ## Tech Stack
 
@@ -85,11 +110,15 @@ Before running this application, you'll need to obtain API keys for:
 
 1. **Basic Search**: Type any question in the search box and press Enter
 2. **Loading State**: During answer generation, the input shows your query and is disabled with a shimmer effect
-3. **Citation Tooltips**: Hover over citation numbers to see compact source previews with favicons
-4. **Source Navigation**: Click on citation tooltips or source cards to visit external links
-5. **Download Options**: Use the download dropdown to save responses in multiple formats (PDF, Markdown, Word, Text)
-6. **New Chat**: Click the "New Chat" button to start a fresh conversation
-7. **Copy & Share**: Easily copy answers to clipboard or share them
+3. **Search Terms Display**: When web search is triggered, see beautifully animated search terms being used
+4. **Citation Tooltips**: Hover over citation numbers to see smart-positioned source previews with favicons (no visit buttons - tooltips disappear on mouse out)
+5. **Source Navigation**: Click on citation numbers to scroll to sources or click source cards to visit external links
+6. **Intelligent Feedback Loop**: The backend automatically evaluates search context quality and refines search terms up to 3 times if needed (seamlessly handled without showing iteration count to users)
+7. **Copy & Share**: Easily copy answers to clipboard with proper button hover effects or share them
+8. **Download Options**: Use the download dropdown to save responses in multiple formats (PDF, Markdown, Word, Text)
+9. **New Chat**: Click the "New Chat" button to start a fresh conversation
+10. **Improved Rendering**: Experience properly aligned lists, headings, and markdown content without layout issues
+11. **Direct AI Responses**: AI answers directly and helpfully without generic summary prefixes
 
 ## Example Queries
 

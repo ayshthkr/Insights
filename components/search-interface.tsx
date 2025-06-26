@@ -12,7 +12,6 @@ interface SearchInterfaceProps {
   hasResults?: boolean
   hasSearched?: boolean
   currentQuery?: string // Add this to show the current query during loading
-  onQueryComplete?: () => void // Add this to clear the query when complete
 }
 
 export function SearchInterface({
@@ -21,7 +20,6 @@ export function SearchInterface({
   hasResults = false,
   hasSearched = false,
   currentQuery = "",
-  onQueryComplete
 }: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [isFocused, setIsFocused] = useState(false)
@@ -32,10 +30,10 @@ export function SearchInterface({
 
   // Clear query when search is complete
   useEffect(() => {
-    if (!isLoading && hasResults && onQueryComplete) {
+    if (!isLoading && hasResults) {
       setQuery("")
     }
-  }, [isLoading, hasResults, onQueryComplete])
+  }, [isLoading, hasResults])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
