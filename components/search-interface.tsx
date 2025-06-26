@@ -3,7 +3,9 @@
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Sparkles, ArrowUp } from "lucide-react"
+import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 interface SearchInterfaceProps {
@@ -23,6 +25,8 @@ export function SearchInterface({
 }: SearchInterfaceProps) {
   const [query, setQuery] = useState("")
   const [isFocused, setIsFocused] = useState(false)
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const { isSignedIn, isLoaded } = useUser()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Show current query during loading, otherwise show the input query
@@ -38,6 +42,11 @@ export function SearchInterface({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (query.trim() && !isLoading) {
+      // Check if user is signed in
+      if (!isSignedIn && isLoaded) {
+        setShowAuthDialog(true)
+        return
+      }
       onSearch(query.trim())
     }
   }
@@ -49,11 +58,21 @@ export function SearchInterface({
     }
   }
 
-  const adjustTextareaHeight = () => {      const textarea = textareaRef.current
-      if (textarea) {
-        textarea.style.height = "auto"
-        textarea.style.height = `${Math.min(textarea.scrollHeight, 90)}px` // Reduced max height slightly
-      }
+  const handleSuggestionClick = (suggestion: string) => {
+    if (!isSignedIn && isLoaded) {
+      setQuery(suggestion)
+      setShowAuthDialog(true)
+      return
+    }
+    setQuery(suggestion)
+  }
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = "auto"
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 90)}px` // Reduced max height slightly
+    }
   }
 
   useEffect(() => {
@@ -68,93 +87,132 @@ export function SearchInterface({
   ]
 
   return (
-    <div className={cn("w-full max-w-5xl mx-auto transition-all duration-500", hasResults ? "max-w-3xl" : "max-w-5xl")}>
-      <form onSubmit={handleSubmit} className="relative">
-        <div
-          className={cn(
-            "relative bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200",
-            isFocused
-              ? "border-emerald-500 shadow-lg shadow-emerald-500/10 dark:shadow-emerald-500/5"
-              : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
-            isLoading && "border-emerald-500 shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10",
-          )}
-          style={isLoading ? {
-            background: `linear-gradient(90deg,
-              rgba(16, 185, 129, 0.1) 0%,
-              rgba(5, 150, 105, 0.2) 50%,
-              rgba(16, 185, 129, 0.1) 100%
-            )`,
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 2s infinite'
-          } : {}}
-        >
-          <div className="flex items-center gap-3 p-4 relative z-10"> {/* Increased padding back */}
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+    <>
+      <div className={cn("w-full max-w-5xl mx-auto transition-all duration-500", hasResults ? "max-w-3xl" : "max-w-5xl")}>
+        <form onSubmit={handleSubmit} className="relative">
+          <div
+            className={cn(
+              "relative bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200",
+              isFocused
+                ? "border-emerald-500 shadow-lg shadow-emerald-500/10 dark:shadow-emerald-500/5"
+                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
+              isLoading && "border-emerald-500 shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10",
+            )}
+            style={isLoading ? {
+              background: `linear-gradient(90deg,
+                rgba(16, 185, 129, 0.1) 0%,
+                rgba(5, 150, 105, 0.2) 50%,
+                rgba(16, 185, 129, 0.1) 100%
+              )`,
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 2s infinite'
+            } : {}}
+          >
+            <div className="flex items-center gap-3 p-4 relative z-10"> {/* Increased padding back */}
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
               </div>
-            </div>
 
-            <textarea
-              ref={textareaRef}
-              value={displayQuery}
-              onChange={(e) => !isLoading && setQuery(e.target.value)} // Disable input during loading
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder={isLoading ? "" : "Ask anything..."}
-              disabled={isLoading}
-              className={cn(
-                "flex-1 resize-none bg-transparent text-base placeholder:text-slate-500 dark:placeholder:text-slate-400", // Reduced font size
-                "focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed",
-                "min-h-[32px] max-h-[100px] leading-7", // Increased width through container changes
-                "flex items-center py-2" // Slightly reduced height
-              )}
-              rows={1}
-              style={{
-                lineHeight: '1.5',
-                paddingTop: '8px',
-                paddingBottom: '8px'
-              }}
-            />
+              <textarea
+                ref={textareaRef}
+                value={displayQuery}
+                onChange={(e) => !isLoading && setQuery(e.target.value)} // Disable input during loading
+                onKeyDown={handleKeyDown}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder={isLoading ? "" : "Ask anything..."}
+                disabled={isLoading}
+                className={cn(
+                  "flex-1 resize-none bg-transparent text-base placeholder:text-slate-500 dark:placeholder:text-slate-400", // Reduced font size
+                  "focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed",
+                  "min-h-[32px] max-h-[100px] leading-7", // Increased width through container changes
+                  "flex items-center py-2" // Slightly reduced height
+                )}
+                rows={1}
+                style={{
+                  lineHeight: '1.5',
+                  paddingTop: '8px',
+                  paddingBottom: '8px'
+                }}
+              />
 
-            <Button
-              type="submit"
-              disabled={!query.trim() || isLoading}
-              size="sm"
-              className={cn(
-                "rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-all duration-200 flex-shrink-0 mt-0.5",
-              )}
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <ArrowUp className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </form>
-
-      {/* Only show suggestions on initial state */}
-      {!hasResults && !isLoading && !hasSearched && (
-        <div className="mt-6 animate-fade-in-up">
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">Try asking about:</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {suggestedQueries.map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={() => setQuery(suggestion)}
-                className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-700 dark:text-slate-300"
+              <Button
+                type="submit"
+                disabled={!query.trim() || isLoading}
+                size="sm"
+                className={cn(
+                  "rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "transition-all duration-200 flex-shrink-0 mt-0.5",
+                )}
               >
-                {suggestion}
-              </button>
-            ))}
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <ArrowUp className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        </form>
+
+        {/* Only show suggestions on initial state */}
+        {!hasResults && !isLoading && !hasSearched && (
+          <div className="mt-6 animate-fade-in-up">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">Try asking about:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {suggestedQueries.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="px-3 py-1.5 text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-700 dark:text-slate-300"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Authentication Dialog */}
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <DialogContent onClose={() => setShowAuthDialog(false)}>
+          <DialogHeader>
+            <DialogTitle className="text-center">Sign in to continue</DialogTitle>
+            <DialogDescription className="text-center">
+              You need to sign in or create an account to start searching and get AI-powered answers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 mt-6">
+            <SignInButton mode="modal">
+              <Button
+                variant="outline"
+                className="w-full rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => setShowAuthDialog(false)}
+              >
+                Sign In
+              </Button>
+            </SignInButton>
+
+            <SignUpButton mode="modal">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium"
+                onClick={() => setShowAuthDialog(false)}
+              >
+                Create Account
+              </Button>
+            </SignUpButton>
+          </div>
+
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-4">
+            Free to use • Secure authentication • Start exploring Insights
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

@@ -1,8 +1,17 @@
 # Perplexity Clone
 
-A modern AI-powered search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
+A modern AI-p## Features
+
+- 🔐 **Secure Authentication**: Clerk-powered authentication with sign-in/sign-up modals and custom-styled components
+- 👤 **User-Gated Access**: Search functionality restricted to authenticated users with elegant authentication prompts via dialog modalsed search engine built with Next.js 15, React 19, and TypeScript. This application provides comprehensive answers to user queries by combining real-time web search with advanced AI language models and intelligent query classification.
 
 ## Recent Improvements
+
+### Authentication & User Management
+- 🔐 **Clerk Authentication**: Complete authentication system with clean header design featuring standard SignInButton and custom-styled SignUpButton
+- 👤 **User-Gated Search**: Only authenticated users can perform searches, with elegant modal prompts for unauthenticated users
+- 🎨 **Enhanced Header**: Clean header layout with proper spacing, authentication buttons positioned on the right, and integrated user profile management
+- 📱 **Responsive Auth UI**: Authentication buttons adapt to different screen sizes with proper spacing and hover effects
 
 ### UI/UX Enhancements
 - 🏷️ **Enhanced Citation Tooltips**: Tooltips now automatically position below if there's insufficient space above
@@ -27,7 +36,9 @@ A modern AI-powered search engine built with Next.js 15, React 19, and TypeScrip
 
 ## Features
 
-- 🔍 **AI-Powered Search**: Utilizes Google Gemini Flash 2.5 for intelligent response generation
+- � **Secure Authentication**: Clerk-powered authentication with sign-in/sign-up modals
+- 👤 **User-Gated Access**: Search functionality restricted to authenticated users with elegant authentication prompts
+- �🔍 **AI-Powered Search**: Utilizes Google Gemini Flash 2.5 for intelligent response generation
 - 🧠 **Smart Query Classification**: Automatically determines whether queries need web search or can be answered with general knowledge
 - 🔄 **Intelligent Feedback Loop**: Backend evaluates context quality and refines search terms automatically (up to 3 iterations)
 - 🎯 **Intelligent Search Terms**: Generates 2-3 optimized search terms for web queries and displays them beautifully to users
@@ -52,7 +63,9 @@ A modern AI-powered search engine built with Next.js 15, React 19, and TypeScrip
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS, shadcn/ui components
+- **Authentication**: Clerk
+- **Database**: Supabase (with Clerk integration)
+- **Styling**: Tailwind CSS, shadcn/ui components, Framer Motion
 - **AI Services**: Google Gemini Flash 2.5
 - **Search API**: Exa AI
 - **Icons**: Lucide React
@@ -64,8 +77,10 @@ A modern AI-powered search engine built with Next.js 15, React 19, and TypeScrip
 
 Before running this application, you'll need to obtain API keys for:
 
-1. **Google AI API Key**: Get it from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. **Exa API Key**: Sign up at [Exa AI](https://exa.ai) and get your API key
+1. **Clerk Authentication**: Sign up at [Clerk](https://clerk.com) and create a new application
+2. **Google AI API Key**: Get it from [Google AI Studio](https://makersuite.google.com/app/apikey)
+3. **Exa API Key**: Sign up at [Exa AI](https://exa.ai) and get your API key
+4. **Supabase** (optional): For database functionality with Clerk integration
 
 ## Installation
 
@@ -89,9 +104,17 @@ Before running this application, you'll need to obtain API keys for:
 
    Edit `.env.local` and add your API keys:
    ```env
+   # Authentication
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   CLERK_SECRET_KEY=your_clerk_secret_key
+
    # AI Services
    GOOGLE_AI_API_KEY=your_gemini_api_key_here
    EXA_API_KEY=your_exa_api_key_here
+
+   # Database (optional)
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_KEY=your_supabase_anon_key
 
    # App Configuration
    NEXT_PUBLIC_APP_URL=http://localhost:3000
