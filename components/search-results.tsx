@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { useEffect } from "react"
 import { downloadAsPDF, downloadAsMarkdown, downloadAsDocx, downloadAsText, type DownloadOptions } from "@/lib/download-utils"
+import { FollowUpQuestions } from "@/components/follow-up-questions"
 
 interface SearchResult {
   title: string
@@ -27,9 +28,18 @@ interface SearchResponse {
 
 interface SearchResultsProps {
   result: SearchResponse
+  chatContext?: Array<{
+    userMessage: {
+      content: string
+    }
+    assistantMessage: {
+      content: string
+    }
+  }>
+  onFollowUpQuestion?: (question: string) => void
 }
 
-export function SearchResults({ result }: SearchResultsProps) {
+export function SearchResults({ result, chatContext = [], onFollowUpQuestion }: SearchResultsProps) {
   const [copied, setCopied] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
   const [highlightedSource, setHighlightedSource] = useState<number | null>(null)
@@ -391,6 +401,15 @@ export function SearchResults({ result }: SearchResultsProps) {
             ))}
           </div>
         </motion.div>
+      )}
+
+      {/* Follow-up Questions */}
+      {onFollowUpQuestion && (
+        <FollowUpQuestions
+          result={result}
+          chatContext={chatContext}
+          onQuestionClick={onFollowUpQuestion}
+        />
       )}
     </motion.div>
   )

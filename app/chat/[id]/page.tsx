@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { SearchInterface } from "@/components/search-interface"
@@ -66,6 +66,11 @@ export default function ChatPage() {
   const [loadingMessages, setLoadingMessages] = useState(true)
   const [allMessagePairs, setAllMessagePairs] = useState<Array<{userMessage: Message, assistantMessage: Message, searchResponse: SearchResponse}>>([])
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+  const [isStreaming, setIsStreaming] = useState(false)
+
+  // Refs to track message elements for scrolling
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const latestAssistantMessageRef = useRef<string | null>(null)
 
   // Load existing messages for this chat
   useEffect(() => {
@@ -133,6 +138,7 @@ export default function ChatPage() {
     setStreamingAnswer("")
     setHasSearched(true)
     setAutoScrollEnabled(true)
+    setIsStreaming(true)
 
     try {
       const response = await fetch("/api/search", {
@@ -239,14 +245,19 @@ export default function ChatPage() {
                     searchResponse: result
                   }
 
+                  // Store the latest assistant message ID for scrolling
+                  latestAssistantMessageRef.current = newAssistantMessage.message_id
+
                   setAllMessagePairs(prev => [...prev, newPair])
                   setStreamingState(null)
                   setStreamingAnswer("")
+                  setIsStreaming(false)
                   break
 
                 case 'complete':
                   setIsLoading(false)
                   setCurrentQuery("")
+                  setIsStreaming(false)
                   break
 
                 case 'error':
@@ -263,14 +274,15 @@ export default function ChatPage() {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
       setStreamingState(null)
       setStreamingAnswer("")
+      setIsStreaming(false)
     } finally {
       setIsLoading(false)
     }
   }, [chatId])
 
-  // Auto-scroll effect during streaming
+  // Auto-scroll effect during streaming - scroll to bottom
   useEffect(() => {
-    if (autoScrollEnabled && (streamingState || streamingAnswer)) {
+    if (autoScrollEnabled && isStreaming && (streamingState || streamingAnswer)) {
       const scrollToBottom = () => {
         // Use setTimeout to ensure DOM has updated
         setTimeout(() => {
@@ -287,19 +299,45 @@ export default function ChatPage() {
 
       return () => clearInterval(scrollInterval)
     }
-  }, [streamingState, streamingAnswer, autoScrollEnabled])
+  }, [streamingState, streamingAnswer, autoScrollEnabled, isStreaming])
 
-  // Additional scroll trigger for when new message pairs are added
+  // Scroll to start of latest assistant message when answer is complete
   useEffect(() => {
-    if (autoScrollEnabled && allMessagePairs.length > 0) {
-      setTimeout(() => {
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth'
-        })
-      }, 200)
+    // Only scroll if we have a specific message to scroll to (not on initial load)
+    if (autoScrollEnabled && !isStreaming && latestAssistantMessageRef.current) {
+      const messageId = latestAssistantMessageRef.current
+      const messageElement = messageRefs.current.get(messageId)
+
+      if (messageElement) {
+        // Wait for the DOM to fully render the new message
+        setTimeout(() => {
+          const elementTop = messageElement.offsetTop
+          const headerHeight = 80 // Approximate header height
+          const scrollPosition = Math.max(0, elementTop - headerHeight)
+
+          window.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          })
+
+          // Clear the ref after scrolling
+          latestAssistantMessageRef.current = null
+        }, 800) // Increased timeout to ensure message is fully rendered
+      } else {
+        // If element not found, clear the ref to prevent infinite attempts
+        latestAssistantMessageRef.current = null
+      }
     }
-  }, [allMessagePairs.length, autoScrollEnabled])
+  }, [latestAssistantMessageRef.current, autoScrollEnabled, isStreaming])
+
+  // Function to register message refs
+  const setMessageRef = useCallback((messageId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      messageRefs.current.set(messageId, element)
+    } else {
+      messageRefs.current.delete(messageId)
+    }
+  }, [])
 
   // Handle initial query from homepage redirect
   useEffect(() => {
@@ -447,8 +485,16 @@ export default function ChatPage() {
 
                     {/* Assistant Response */}
                     <div className="flex justify-start">
-                      <div className="w-full max-w-4xl">
-                        <SearchResults result={pair.searchResponse} />
+                      <div
+                        ref={(el) => setMessageRef(pair.assistantMessage.message_id, el)}
+                        className="w-full max-w-4xl"
+                      >
+                        <SearchResults
+                          result={pair.searchResponse}
+                          chatContext={allMessagePairs.slice(0, index)}
+                          // Only show follow-up questions for the most recent message when not loading
+                          onFollowUpQuestion={index === allMessagePairs.length - 1 && !isLoading ? handleSearch : undefined}
+                        />
                       </div>
                     </div>
                   </motion.div>
@@ -486,7 +532,11 @@ export default function ChatPage() {
                 exit={{ opacity: 0, y: -20 }}
                 className="w-full max-w-4xl"
               >
-                <SearchResults result={searchResult} />
+                <SearchResults
+                  result={searchResult}
+                  chatContext={allMessagePairs}
+                  // Don't show follow-up questions for loading results
+                />
               </motion.div>
             )}
           </AnimatePresence>
