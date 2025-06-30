@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "next-themes"
 import { ClerkProvider } from "@clerk/nextjs"
 import NextTopLoader from "nextjs-toploader"
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({
           </ThemeProvider>
         </body>
       </html>
+      <Analytics />
     </ClerkProvider>
   )
 }
