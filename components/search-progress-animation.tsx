@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 
-const AnimatedSearchIcon = ({ streamingStage }) => {
+const AnimatedSearchIcon = ({ streamingStage }: any) => {
   const isSearching = streamingStage?.stage === 'searching';
 
   return (
