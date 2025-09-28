@@ -111,7 +111,7 @@ async function classifyQuery(query: string, chatContext?: string): Promise<Query
       }
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     // Get current date information for temporal context
     const currentDate = new Date()
@@ -231,7 +231,7 @@ async function evaluateContextQuality(query: string, sources: SearchResult[]): P
       return { isInsufficient: true, newSearchTerms: [query] }
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     // Get current date information for temporal context
     const currentDate = new Date()
@@ -352,7 +352,7 @@ async function searchWeb(searchTerms: string[]): Promise<SearchResult[]> {
 
 async function* generateAnswer(query: string, sources: SearchResult[], chatContext?: string): AsyncGenerator<string, void, unknown> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     // Combine all source content
     const combinedContent = sources
@@ -412,7 +412,7 @@ Provide a well-structured, directly responsive answer that immediately addresses
 
 async function* generateDirectAnswer(query: string, chatContext?: string): AsyncGenerator<string, void, unknown> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     const contextPrompt = chatContext
       ? `\n\nPrevious conversation context:\n${chatContext}\n\nConsider this context when answering. Reference previous parts of the conversation if relevant.`

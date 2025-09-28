@@ -63,7 +63,7 @@ export default function Home() {
       <div className={cn("container mx-auto px-4 py-6", hasSearched && "pb-32")}>
         <Header />
 
-        <main className="flex flex-col items-center justify-center space-y-8">
+        <main className="flex flex-col items-center justify-center space-y-8 pt-16">
           {/* Main Search Interface - Shows only when no search is active */}
           <AnimatePresence mode="wait">
             {!hasSearched && (

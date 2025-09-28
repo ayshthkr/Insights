@@ -9,7 +9,7 @@ export function Header() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <header className="flex justify-between items-center p-4 h-16">
+    <header className="flex justify-between items-center p-10 h-16 fixed top-0 left-0 right-0 mb-10 backdrop-blur-2xl">
       <div className="flex items-center gap-3">
         <div>
           <Link href={'/'} className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent hover:underline decoration-teal-600">

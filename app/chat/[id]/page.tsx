@@ -388,7 +388,7 @@ export default function ChatPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
         <div className="container mx-auto px-4 py-6">
           <Header />
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center justify-center min-h-[60vh] pt-16">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
               <p className="text-slate-600 dark:text-slate-400">Loading chat...</p>
@@ -404,7 +404,7 @@ export default function ChatPage() {
       <div className={cn("container mx-auto px-4 py-6", hasSearched && "pb-32")}>
         <Header />
 
-        <main className="flex flex-col items-center justify-center space-y-8">
+        <main className="flex flex-col items-center justify-center space-y-8 pt-16">
           {/* Main Search Interface - Shows only when no search is active */}
           <AnimatePresence mode="wait">
             {!hasSearched && (
