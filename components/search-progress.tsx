@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { StreamingMarkdown } from "@/components/ui/streaming-markdown"
+import AnimatedSearchIcon from "./search-progress-animation"
 
 interface SearchResult {
   title: string
@@ -84,13 +85,7 @@ export function SearchProgress({ query, stage, sources, streamingStage, streamin
         {/* Query Display with personalized details */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
-            <motion.div
-              className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center"
-              animate={{ rotate: streamingStage?.stage === 'searching' ? 360 : 0 }}
-              transition={{ duration: 2, repeat: streamingStage?.stage === 'searching' ? Infinity : 0, ease: "linear" }}
-            >
-              <Search className="w-4 h-4 text-white" />
-            </motion.div>
+            <AnimatedSearchIcon streamingStage={streamingStage} />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {streamingStage?.searchDetails ? (
                 <>
